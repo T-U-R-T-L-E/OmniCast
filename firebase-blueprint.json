@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Campaign": {
+      "title": "Campaign",
+      "description": "A cross-posting campaign representing metadata, states, scheduled information and logs",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique campaign ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the video or campaign"
+        },
+        "description": {
+          "type": "string",
+          "description": "General description or caption body"
+        },
+        "hashtags": {
+          "type": "string",
+          "description": "Standard cross-platform hashtags"
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "Public URL where video is cached"
+        },
+        "videoName": {
+          "type": "string",
+          "description": "Original file name of uploaded video clip"
+        },
+        "videoSize": {
+          "type": "string",
+          "description": "Human readable video file length size"
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "Snapshot poster URL"
+        },
+        "platforms": {
+          "type": "object",
+          "description": "JSON boolean flags denoting targeted platform destinations"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["published", "draft", "failed"]
+        },
+        "publishDate": {
+          "type": "string",
+          "description": "Timestamp description of publication event"
+        },
+        "analytics": {
+          "type": "object",
+          "description": "Basic engagement counts"
+        }
+      },
+      "required": ["id", "title", "description", "status"]
+    }
+  },
+  "firestore": {
+    "/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "The general folder for all cross-posted video campaigns"
+    }
+  }
+}

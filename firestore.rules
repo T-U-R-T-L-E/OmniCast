@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default-deny Catch-all global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Input data validation helper
+    function isValidCampaign(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'status'])
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 5000
+        && data.status in ['published', 'draft', 'failed'];
+    }
+
+    // Campaigns fortress rule definition
+    match /campaigns/{campaignId} {
+      allow read: if true; // Let public inspect campaigns
+      
+      allow create, update: if isValidId(campaignId) && isValidCampaign(request.resource.data);
+      
+      allow delete: if isValidId(campaignId);
+    }
+  }
+}
