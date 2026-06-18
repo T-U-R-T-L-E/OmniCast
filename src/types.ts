@@ -83,3 +83,14 @@ export interface PublishingStep {
   status: "idle" | "running" | "completed" | "failed";
   progress: number;
 }
+
+export interface MediaLibraryItem {
+  id: string;
+  name: string;
+  size: string;
+  src: string;
+  thumbnail: string;
+  type: "video" | "image";
+  duration?: number;
+}
+

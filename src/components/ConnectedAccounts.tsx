@@ -6,15 +6,34 @@ interface ConnectedAccountsProps {
   accounts: ConnectedAccount[];
   onToggleConnect: (platformId: string) => void;
   onUpdateUsername: (platformId: string, username: string) => void;
+  onRevokeOAuth?: (platform: string, platformId: string) => Promise<void>;
 }
 
 export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
   accounts,
   onToggleConnect,
   onUpdateUsername,
+  onRevokeOAuth,
 }) => {
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
   const [tempUsername, setTempUsername] = useState("");
+  const [revokingPlatforms, setRevokingPlatforms] = useState<Record<string, boolean>>({});
+
+  const handleRevokeClick = async (platform: string, id: string) => {
+    setRevokingPlatforms((prev) => ({ ...prev, [id]: true }));
+    try {
+      if (onRevokeOAuth) {
+        await onRevokeOAuth(platform, id);
+      } else {
+        await new Promise((r) => setTimeout(r, 805));
+        onToggleConnect(id);
+      }
+    } catch (err) {
+      console.error("Revoke error:", err);
+    } finally {
+      setRevokingPlatforms((prev) => ({ ...prev, [id]: false }));
+    }
+  };
 
   const getPlatformColors = (platform: string) => {
     switch (platform) {
@@ -164,19 +183,36 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-1.5 items-end">
-                  <button
-                    id={`connect-toggle-${acc.id}`}
-                    type="button"
-                    onClick={() => onToggleConnect(acc.id)}
-                    className={`p-1.5 rounded-lg border transition-all hover:scale-105 active:scale-95 ${
-                      acc.connected
-                        ? "bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-600"
-                        : "bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-600"
-                    }`}
-                    title={acc.connected ? "Disconnect account" : "Connect account"}
-                  >
-                    {acc.connected ? <Link2Off className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                  </button>
+                  {acc.connected ? (
+                    revokingPlatforms[acc.id] ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-rose-600 font-bold bg-rose-50/50 border border-rose-200 rounded-lg">
+                        <RefreshCw className="w-3/12 max-w-[12px] h-3 animate-spin text-rose-500" />
+                        <span>Revoking Token...</span>
+                      </div>
+                    ) : (
+                      <button
+                        id={`connect-toggle-${acc.id}`}
+                        type="button"
+                        onClick={() => handleRevokeClick(acc.platform, acc.id)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-extrabold tracking-wider bg-rose-50 hover:bg-rose-600 border border-rose-200 text-rose-600 hover:text-white rounded-lg transition-all hover:scale-105 active:scale-95 cursor-pointer leading-none font-sans"
+                        title="Disconnect connection and securely revoke OAuth access tokens"
+                      >
+                        <Link2Off className="w-3 h-3" />
+                        <span>Disconnect</span>
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      id={`connect-toggle-${acc.id}`}
+                      type="button"
+                      onClick={() => onToggleConnect(acc.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-extrabold tracking-wider bg-blue-50 hover:bg-blue-600 border border-blue-200 text-blue-600 hover:text-white rounded-lg transition-all hover:scale-105 active:scale-95 cursor-pointer leading-none font-sans"
+                      title="Link and authorize account via OAuth protocol"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Link Account</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
