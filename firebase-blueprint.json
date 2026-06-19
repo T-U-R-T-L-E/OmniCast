@@ -9,6 +9,10 @@
           "type": "string",
           "description": "Unique campaign ID"
         },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase UID of campaign creator"
+        },
         "title": {
           "type": "string",
           "description": "Title of the video or campaign"

@@ -370,7 +370,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {accounts.map((acc) => {
             const hasVideo = attachments[acc.platform];
             const isActive = acc.connected;

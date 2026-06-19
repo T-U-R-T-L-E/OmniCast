@@ -75,7 +75,7 @@ export const Presets: React.FC<PresetsProps> = ({ onSelect, selectedId }) => {
         </h3>
         <span className="text-[10px] text-slate-400 font-medium font-sans">Click to instantly populate editor</span>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {VIDEO_PRESETS.map((preset) => {
           const IconComponent = preset.icon;
           const isSelected = selectedId === preset.id;

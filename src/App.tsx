@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Calendar,
   SlidersHorizontal,
+  ArrowRight,
   Eye,
   Heart,
   MessageCircle,
@@ -36,18 +37,57 @@ import {
   UserPlus,
   Youtube,
   Instagram,
-  Facebook
+  Facebook,
+  Activity,
+  Compass,
+  Rocket,
+  Users,
+  Key,
+  LineChart,
+  DollarSign,
+  BookOpen,
+  Star,
+  LogOut,
+  Bell,
+  Moon,
+  ChevronDown,
+  CreditCard,
+  HelpCircle,
+  User,
+  ChevronUp,
+  X,
+  Menu,
+  History
 } from "lucide-react";
-import { ConnectedAccount, OptimizedResult, CrossPost, PublishingStep, MediaLibraryItem } from "./types";
+import { ConnectedAccount, OptimizedResult, CrossPost, PublishingStep, MediaLibraryItem, UserProfile, ApiKey } from "./types";
 import { ConnectedAccounts } from "./components/ConnectedAccounts";
 import { Presets, PresetVideo } from "./components/Presets";
 import { Confetti } from "./components/Confetti";
 import { MediaLibrary } from "./components/MediaLibrary";
+import { CalendarView } from "./components/CalendarView";
+import { OnboardingView } from "./components/OnboardingView";
+import { UserManagement } from "./components/UserManagement";
+import { ApiKeyManagement } from "./components/ApiKeyManagement";
+import { AnalyticsView } from "./components/AnalyticsView";
+import { PricingView } from "./components/PricingView";
+import { HelpCenterView } from "./components/HelpCenterView";
+import { DocumentationView } from "./components/DocumentationView";
+import { ReviewFormView } from "./components/ReviewFormView";
+import { ProfileView } from "./components/ProfileView";
+import { QueueSettingsView } from "./components/QueueSettingsView";
+import { BillingInvoicesView } from "./components/BillingInvoicesView";
+import { ConnectedAppsView } from "./components/ConnectedAppsView";
+import { TeamManagementView } from "./components/TeamManagementView";
+import { UploadHistoryView } from "./components/UploadHistoryView";
 import { 
   loadCampaignsFromFirestore, 
   saveCampaignToFirestore, 
-  deleteCampaignFromFirestore 
+  deleteCampaignFromFirestore,
+  auth
 } from "./lib/firebase";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { isUserEmailVerified, isPasswordLinkingRequired, logOutUser } from "./lib/firebaseAuth";
+import { AuthScreen } from "./components/AuthScreen";
 import { useAutoSaveDraft } from "./hooks/useAutoSave";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -90,6 +130,30 @@ export default function App() {
   // Config & state
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(true);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(DEFAULT_ACCOUNTS);
+  
+  // Active Authenticated user state
+  const [authedUser, setAuthedUser] = useState<FirebaseUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Synchronize authenticated state including email verification and account linking checks
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const verified = isUserEmailVerified(user);
+        const linkRequired = isPasswordLinkingRequired(user);
+        
+        if (verified && !linkRequired) {
+          setAuthedUser(user);
+        } else {
+          setAuthedUser(null);
+        }
+      } else {
+        setAuthedUser(null);
+      }
+      setAuthChecked(true);
+    });
+    return () => unsub();
+  }, []);
 
   const getAccountForPlatform = (plat: string) => {
     return accounts.find(a => a.platform === plat) || DEFAULT_ACCOUNTS.find(a => a.platform === plat);
@@ -297,9 +361,18 @@ export default function App() {
         for (const k of keys) {
           if (next[k].status === "success" && next[k].expirySeconds !== undefined) {
             if (next[k].expirySeconds > 0) {
+              let newVal = next[k].expirySeconds - 1;
+              if (newVal < 300) {
+                // Instantly update to non-blocking zone and trigger animated silent refresh
+                newVal = 3599; // Set buffer cleanly to avoid repeat triggers
+                const platformLabel = k; // Capture key
+                setTimeout(() => {
+                  forceRefreshToken(platformLabel, true);
+                }, 0);
+              }
               next[k] = {
                 ...next[k],
-                expirySeconds: next[k].expirySeconds - 1
+                expirySeconds: newVal
               };
               hasChanges = true;
             }
@@ -413,6 +486,45 @@ export default function App() {
     }
   };
 
+  const forceRefreshToken = async (plat: "youtube" | "tiktok" | "instagram" | "facebook", silent: boolean = false) => {
+    const isConnected = accounts.find((a) => a.platform === (plat === "youtube" ? "youtube_shorts" : plat))?.connected ?? false;
+    
+    if (!isConnected) {
+      triggerToast(`Cannot refresh: ${plat === "youtube" ? "YouTube" : plat === "tiktok" ? "TikTok" : plat === "instagram" ? "Instagram" : "Facebook"} is not linked.`);
+      return;
+    }
+
+    if (silent) {
+      triggerToast(`Refreshing ${plat === "youtube" ? "YouTube" : plat === "tiktok" ? "TikTok" : plat === "instagram" ? "Instagram" : "Facebook"}...`);
+    } else {
+      triggerToast(`Executing token refresh handshake for ${plat === "youtube" ? "YouTube" : plat === "tiktok" ? "TikTok" : plat === "instagram" ? "Instagram" : "Facebook"}...`);
+    }
+
+    // Simulate typical OAuth token refresh call (e.g. request POST with refresh_token)
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const pingMs = Math.floor(40 + Math.random() * 55);
+    const maxQ = plat === "youtube" ? 100 : plat === "tiktok" ? 150 : plat === "instagram" ? 200 : 100;
+    const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const randExpiry = Math.floor(1800 + Math.random() * 1800); // Between 30 and 60 minutes
+    const refreshedQuotaUsed = Math.max(0, Math.floor(healthStatus[plat].quotaUsed * 0.45)); // Recover some daily quota following a clean OAuth cycle
+
+    setHealthStatus(prev => ({
+      ...prev,
+      [plat]: {
+        status: "success",
+        message: `Token Refreshed (${pingMs}ms)`,
+        ping: pingMs,
+        connectedSince: `Refreshed at ${timeNow}`,
+        quotaUsed: refreshedQuotaUsed,
+        quotaMax: maxQ,
+        expirySeconds: randExpiry
+      }
+    }));
+
+    triggerToast(`OAuth Session Refreshed! ${plat === "youtube" ? "YouTube" : plat === "tiktok" ? "TikTok" : plat === "instagram" ? "Instagram" : "Facebook"} token is fully active.`);
+  };
+
   // Dynamic automatic synced updates of covers/thumbnails when video selection occurs
   useEffect(() => {
     const defaultThumb = videoFile?.thumbnail || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400";
@@ -437,6 +549,12 @@ export default function App() {
 
   // Saved campaigns history (Local Storage synced)
   const [campaigns, setCampaigns] = useState<CrossPost[]>([]);
+
+  // Navigation & Multi-page workspace layout
+  const [activePage, setActivePage] = useState<"users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history">("users");
+  const [uploadStep, setUploadStep] = useState<1 | 2 | 3>(1);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [docsTabOverride, setDocsTabOverride] = useState<"guides" | "helpdesk" | "review" | undefined>(undefined);
 
   // Selected view modes
   const [activePlatformPreview, setActivePlatformPreview] = useState<"tiktok" | "instagram" | "facebook" | "youtube_shorts" | "bulk_edit">("tiktok");
@@ -481,6 +599,14 @@ export default function App() {
   // Toast notifier
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Mobile menu bottom-sheet state
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+
+  // Scroll to page top on active page modification
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [activePage]);
+
   // Load config & initial campaigns
   useEffect(() => {
     const now = new Date();
@@ -495,15 +621,24 @@ export default function App() {
         setHasGeminiKey(data.hasGeminiKey);
       })
       .catch(e => console.error("Could not fetch Server API configuration:", e));
+  }, []);
+
+  // Load campaigns user-specific history when authedUser becomes active
+  useEffect(() => {
+    if (!authedUser) {
+      setCampaigns([]);
+      setAccounts(DEFAULT_ACCOUNTS);
+      return;
+    }
 
     const loadInitialData = async () => {
       let loadedFromFirestore = false;
       try {
-        const firestoreCampaigns = await loadCampaignsFromFirestore();
-        if (firestoreCampaigns && firestoreCampaigns.length > 0) {
+        const firestoreCampaigns = await loadCampaignsFromFirestore(authedUser.uid);
+        if (firestoreCampaigns) {
           setCampaigns(firestoreCampaigns);
           loadedFromFirestore = true;
-          console.log("[Omni-Cast Firebase]: Synced campaigns securely from Firestore");
+          console.log("[Omni-Cast Firebase]: Synced user campaigns securely from Firestore");
         }
       } catch (err) {
         console.warn("[Omni-Cast Firebase]: Firestore campaign load bypassed/not-ready (using localized fallback):", err);
@@ -511,7 +646,7 @@ export default function App() {
 
       if (!loadedFromFirestore) {
         try {
-          const stored = localStorage.getItem("posting_campaigns_v1");
+          const stored = localStorage.getItem(`posting_campaigns_v1_${authedUser.uid}`);
           if (stored) {
             setCampaigns(JSON.parse(stored));
           } else {
@@ -519,6 +654,7 @@ export default function App() {
             const initialMock: CrossPost[] = [
               {
                 id: "camp-1",
+                ownerId: authedUser.uid,
                 title: "Avenue Sunset Walk in San Francisco",
                 description: "A gorgeous warm day in California walking down Sunset Boulevard, checking out local micro-roasters.",
                 hashtags: "sf, sunset, travelvlog, walkingtour",
@@ -532,7 +668,7 @@ export default function App() {
                 analytics: { views: 8490, likes: 1220, shares: 340, comments: 84 }
               }
             ];
-            localStorage.setItem("posting_campaigns_v1", JSON.stringify(initialMock));
+            localStorage.setItem(`posting_campaigns_v1_${authedUser.uid}`, JSON.stringify(initialMock));
             setCampaigns(initialMock);
           }
         } catch (e) {
@@ -542,19 +678,36 @@ export default function App() {
     };
 
     loadInitialData();
-  }, []);
+
+    // Load personalized connected accounts from LocalStorage
+    try {
+      const storedAcc = localStorage.getItem(`omnicast_accounts_v1_${authedUser.uid}`);
+      if (storedAcc) {
+        setAccounts(JSON.parse(storedAcc));
+      } else {
+        setAccounts(DEFAULT_ACCOUNTS);
+      }
+    } catch (e) {
+      console.error("LocalStorage load accounts error:", e);
+    }
+  }, [authedUser]);
 
   const saveCampaigns = (updated: CrossPost[]) => {
     setCampaigns(updated);
+    if (!authedUser) return;
     try {
-      localStorage.setItem("posting_campaigns_v1", JSON.stringify(updated));
+      localStorage.setItem(`posting_campaigns_v1_${authedUser.uid}`, JSON.stringify(updated));
     } catch (e) {
       console.error("LocalStorage save error:", e);
     }
 
     // Proactively back up each campaign item in Firestore
     updated.forEach(campaign => {
-      saveCampaignToFirestore(campaign).catch(err => {
+      const dbCampaign = {
+        ...campaign,
+        ownerId: campaign.ownerId || authedUser.uid
+      };
+      saveCampaignToFirestore(dbCampaign).catch(err => {
         console.debug("[Omni-Cast Firebase]: Firestore sync skipped for campaign id:", campaign.id);
       });
     });
@@ -568,6 +721,20 @@ export default function App() {
   };
 
   // Connected Account handlers
+  const saveAccounts = (updatedAccounts: ConnectedAccount[] | ((prev: ConnectedAccount[]) => ConnectedAccount[])) => {
+    setAccounts(prev => {
+      const resolved = typeof updatedAccounts === "function" ? updatedAccounts(prev) : updatedAccounts;
+      if (authedUser) {
+        try {
+          localStorage.setItem(`omnicast_accounts_v1_${authedUser.uid}`, JSON.stringify(resolved));
+        } catch (e) {
+          console.error("LocalStorage save accounts error:", e);
+        }
+      }
+      return resolved;
+    });
+  };
+
   const handleToggleConnect = (platformId: string) => {
     const updated = accounts.map(a => {
       if (a.id === platformId) {
@@ -575,12 +742,12 @@ export default function App() {
       }
       return a;
     });
-    setAccounts(updated);
+    saveAccounts(updated);
     triggerToast(`Updated connection state for ${platformId.replace("acc-", "")}`);
   };
 
   const handleUpdateUsername = (platformId: string, newHandle: string) => {
-    setAccounts(accounts.map(a => {
+    saveAccounts(accounts.map(a => {
       if (a.id === platformId) {
         return { ...a, username: newHandle };
       }
@@ -604,7 +771,7 @@ export default function App() {
       const data = await response.json();
       if (data.success) {
         // Disconnect account
-        setAccounts(prev => prev.map(a => {
+        saveAccounts(prev => prev.map(a => {
           if (a.id === platformId) {
             return { ...a, connected: false, status: "not_connected" };
           }
@@ -1512,35 +1679,61 @@ export default function App() {
     };
   }, [saveDraft, videoFile, isPublishing, handlePublishAll]);
 
+  // Aggregate values for the connected platforms daily API budget
+  const statusValues = Object.values(healthStatus) as Array<{ quotaUsed: number; quotaMax: number }>;
+  const totalQuotaUsed = statusValues.reduce((sum, s) => sum + (s.quotaUsed || 0), 0);
+  const totalQuotaMax = statusValues.reduce((sum, s) => sum + (s.quotaMax || 0), 0);
+  const totalQuotaPercent = totalQuotaMax > 0 ? Math.min(100, Math.round((totalQuotaUsed / totalQuotaMax) * 100)) : 0;
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
+        <div className="space-y-4 text-center">
+          <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto" />
+          <p className="text-xs text-slate-500 font-bold font-mono uppercase tracking-wider">Accessing Vault Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authedUser) {
+    return (
+      <AuthScreen 
+        onAuthSuccess={(user: any) => setAuthedUser(user)} 
+        onAddToast={triggerToast} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#0F172A] flex flex-col antialiased">
       {/* Visual Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-3.5">
           <img 
             src="https://past-aquamarine-opezzkg3.edgeone.app/logo%204%20(2).png" 
-            alt="Omni-Cast Logo" 
+            alt="OmniCast Logo" 
             className="w-9 h-9 object-contain rounded-lg"
             referrerPolicy="no-referrer"
           />
           <div>
-            <span className="font-extrabold text-lg tracking-tight text-slate-900 block font-sans">Omni-Cast</span>
-            <span className="text-[10px] text-slate-400 font-bold tracking-wider -mt-1 block">CROSS-PLATFORM DISTRIBUTION</span>
+            <span className="font-black text-lg tracking-tight text-slate-900 block font-sans leading-none">OmniCast</span>
+            <span className="hidden sm:block text-[10px] text-slate-400 font-bold tracking-wider mt-1">CROSS-PLATFORM API DISTRIBUTION</span>
           </div>
-          <span className="hidden sm:inline px-2 py-0.5 bg-slate-150 text-slate-600 text-[10px] uppercase tracking-widest font-extrabold rounded">
+          <span className="hidden md:inline px-2 py-0.5 bg-slate-150 text-slate-600 text-[10px] uppercase tracking-widest font-extrabold rounded">
             v2.4.0
           </span>
         </div>
 
         <div className="flex items-center space-x-4">
           {!hasGeminiKey && (
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs leading-none">
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs leading-none">
               <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600 animate-pulse" />
               <span>No Gemini Key Configured. Defaults enabled.</span>
             </div>
           )}
 
-          <div className="flex -space-x-1.5">
+          <div className="hidden sm:flex -space-x-1.5">
             {accounts.map(a => (
               <img
                 key={a.id}
@@ -1552,10 +1745,182 @@ export default function App() {
             ))}
           </div>
 
+          {authedUser && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Notification icon */}
+              <button 
+                type="button" 
+                onClick={() => triggerToast("You have no unread notifications")}
+                className="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                title="Notifications"
+              >
+                <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
+
+              {/* Theme toggle icon */}
+              <button 
+                type="button" 
+                onClick={() => triggerToast("Theme toggle: Visual style is set to modern premium light")}
+                className="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                title="Dark Mode toggle"
+              >
+                <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </button>
+
+              {/* Profile dropdown icon */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileDropdownOpen(!isProfileDropdownOpen);
+                  }}
+                  className={`flex items-center gap-1.5 p-1 hover:bg-slate-55 border border-transparent hover:border-slate-200/60 rounded-xl transition-all cursor-pointer ${
+                    activePage === "profile" || isProfileDropdownOpen 
+                      ? "bg-indigo-50/50 border-indigo-200 ring-4 ring-indigo-50/50" 
+                      : ""
+                  }`}
+                  title="View Profile dropdown"
+                >
+                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-black text-sm border-2 border-white shadow-xs overflow-hidden leading-none shrink-0">
+                    <img
+                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
+                      alt="User Profile"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="hidden sm:flex items-center gap-0.5 max-w-28 text-left">
+                    {isProfileDropdownOpen ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                    )}
+                  </div>
+                </button>
+
+                {isProfileDropdownOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsProfileDropdownOpen(false)} 
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-scale-up text-left">
+                      <div className="px-4 py-2.5 border-b border-slate-105">
+                        <p className="text-xs text-slate-500 font-bold truncate">
+                          {authedUser?.email || "user@example.com"}
+                        </p>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setActivePage("profile");
+                            setIsProfileDropdownOpen(false);
+                            triggerToast("Viewing Profile");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "profile" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <User className="w-4 h-4 text-slate-450" />
+                          My Profile
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            setActivePage("invoices");
+                            setIsProfileDropdownOpen(false);
+                            triggerToast("Viewing Invoices");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "invoices" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4 text-slate-450" />
+                          Billing & Invoices
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActivePage("history");
+                            setIsProfileDropdownOpen(false);
+                            triggerToast("Viewing Upload History");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "history" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <Clock className="w-4 h-4 text-slate-450" />
+                          History
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActivePage("queue_settings");
+                            setIsProfileDropdownOpen(false);
+                            triggerToast("Viewing Queue Settings");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "queue_settings" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <Calendar className="w-4 h-4 text-slate-450" />
+                          Queue Settings
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActivePage("connected_apps");
+                            setIsProfileDropdownOpen(false);
+                            triggerToast("Viewing Connected Access");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "connected_apps" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <Key className="w-4 h-4 text-slate-450" />
+                          Connected Apps
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActivePage("team_management");
+                            setIsProfileDropdownOpen(false);
+                            triggerToast("Viewing Team Management");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "team_management" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <Users className="w-4 h-4 text-slate-450" />
+                          Team Management
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIsProfileDropdownOpen(false);
+                            setDocsTabOverride("helpdesk");
+                            setActivePage("docs");
+                            triggerToast("Opening Help Center...");
+                          }}
+                          className={`w-full px-4 py-2.5 hover:bg-slate-50 text-slate-705 text-xs font-bold flex items-center gap-2.5 transition-colors ${
+                            activePage === "docs" && docsTabOverride === "helpdesk" ? "bg-indigo-50/50 text-indigo-700" : ""
+                          }`}
+                        >
+                          <HelpCircle className="w-4 h-4 text-slate-450" />
+                          Support
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handlePublishAll}
             disabled={isPublishing || (!videoFile && Object.keys(platformAttachments).length === 0)}
-            className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm ${
+            className={`px-3 sm:px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm ${
               (!videoFile && Object.keys(platformAttachments).length === 0)
                 ? "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed"
                 : isPublishing
@@ -1566,29 +1931,328 @@ export default function App() {
             {isPublishing ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Broadcasting...
+                <span className="hidden sm:inline">Broadcasting...</span>
+                <span className="sm:hidden">Broadcasting</span>
               </>
             ) : (
               <>
                 <Share2 className="w-3.5 h-3.5" />
-                Distribute All
+                <span className="hidden sm:inline">Distribute All</span>
+                <span className="sm:hidden">Distribute</span>
               </>
             )}
           </button>
         </div>
       </header>
 
+      {/* Primary Tab Navigation */}
+      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-6 overflow-x-auto py-1 scrollbar-none select-none">
+            <button
+              type="button"
+              onClick={() => setActivePage("users")}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "users"
+                  ? "border-indigo-600 text-indigo-750 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <Users className="w-4 h-4 text-indigo-500" />
+              <span>Users</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "users" ? "bg-indigo-100 text-indigo-700 font-extrabold" : "bg-slate-100 text-slate-500"
+              }`}>
+                {accounts.length ? `${accounts.length} Profiles` : "Profiles"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActivePage("apikeys")}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "apikeys"
+                  ? "border-indigo-600 text-indigo-750 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <Key className="w-4 h-4 text-indigo-500" />
+              <span>API Keys</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "apikeys" ? "bg-indigo-100 text-indigo-700 font-extrabold" : "bg-slate-100 text-slate-500"
+              }`}>
+                Generate
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActivePage("upload")}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "upload"
+                  ? "border-blue-600 text-blue-700 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <Film className="w-4 h-4 text-blue-500 animate-pulse" />
+              <span>Upload</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "upload" ? "bg-blue-100 text-blue-700 font-extrabold" : "bg-slate-100 text-slate-500"
+              }`}>
+                Step {uploadStep}/3
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActivePage("calendar")}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "calendar"
+                  ? "border-emerald-600 text-emerald-700 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <Calendar className="w-4 h-4 text-emerald-500" />
+              <span>Calendar</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "calendar" ? "bg-emerald-100 text-emerald-700 font-extrabold" : "bg-slate-100 text-slate-500"
+              }`}>
+                {campaigns.length} Posts
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActivePage("analytics")}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "analytics"
+                  ? "border-indigo-600 text-indigo-750 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <LineChart className="w-4 h-4 text-indigo-505" />
+              <span>Analytics</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "analytics" ? "bg-indigo-100 text-indigo-700 font-extrabold" : "bg-slate-100 text-slate-500"
+              }`}>
+                Live Stats
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActivePage("pricing")}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "pricing"
+                  ? "border-indigo-650 text-indigo-800 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-[#4F46E5]" />
+              <span>Pricing</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "pricing" ? "bg-indigo-100 text-indigo-700 font-black animate-pulse" : "bg-slate-100 text-slate-500"
+              }`}>
+                Save 40%
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { 
+                setDocsTabOverride(undefined);
+                setActivePage("docs"); 
+                triggerToast("Opening Documentation Hub..."); 
+              }}
+              className={`py-3 px-1 text-xs sm:text-sm font-extrabold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
+                activePage === "docs"
+                  ? "border-indigo-600 text-indigo-750 font-extrabold"
+                  : "border-transparent text-slate-455 hover:text-slate-700"
+              }`}
+            >
+              <BookOpen className="w-4 h-4 text-indigo-505" />
+              <span>Docs</span>
+              <span className={`px-1.5 py-0.5 text-[9px] rounded font-bold font-sans ${
+                activePage === "docs" ? "bg-indigo-100 text-indigo-700 font-extrabold" : "bg-slate-100 text-slate-500"
+              }`}>
+                Guides
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden">
+      <main className="flex-1 w-full max-w-7xl mx-auto p-4 pb-28 sm:p-6 sm:pb-12 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-x-hidden overflow-y-visible">
         
-        {/* Left Column: Form Editing, Accounts & Presets (7 cols) */}
-        <div className="lg:col-span-7 space-y-6 overflow-y-auto pr-0 lg:pr-1">
+        {activePage === "users" ? (
+          <div className="lg:col-span-12 space-y-8">
+            <UserManagement 
+              accounts={accounts}
+              onAddToast={triggerToast}
+            />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-7">
+                <ConnectedAccounts
+                  accounts={accounts}
+                  onToggleConnect={handleToggleConnect}
+                  onUpdateUsername={handleUpdateUsername}
+                  onRevokeOAuth={handleRevokeOAuth}
+                />
+              </div>
+              <div className="lg:col-span-5">
+                {/* Real-world API Distribution Bridge Guide */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 space-y-4 shadow-sm text-left" id="api-integration-bridge">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">🔌 Core OAuth Distribution Bridge</h3>
+                    <p className="text-[11px] text-slate-400">Configure global profile scopes and token handshakes</p>
+                  </div>
+                  <p className="text-xs text-slate-550 leading-relaxed font-semibold">
+                    Social tokens are securely persistent in the client session. When token lifetimes expire, OmniCast schedules transparent OAuth handshakes via standard refresh grant types.
+                  </p>
+                  {/* Daily API budget stats */}
+                  <div className="bg-slate-50 border border-slate-150 rounded-xl p-3.5 space-y-2 text-left">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Channel Dispatch Status</span>
+                    <div className="flex justify-between items-center text-xs font-semibold text-slate-605">
+                      <span>Aggregate Quotas Limit</span>
+                      <span className="font-mono text-indigo-705 font-bold">{totalQuotaUsed} / {totalQuotaMax || 100} Reqs</span>
+                    </div>
+                    <div className="w-full bg-slate-200/70 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-indigo-600 h-1.5 rounded-full transition-all" style={{ width: `${totalQuotaPercent}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activePage === "apikeys" ? (
+          <div className="lg:col-span-12">
+            <ApiKeyManagement 
+              onAddToast={triggerToast}
+            />
+          </div>
+        ) : activePage === "analytics" ? (
+          <div className="lg:col-span-12">
+            <AnalyticsView 
+              onAddToast={triggerToast}
+            />
+          </div>
+        ) : activePage === "pricing" ? (
+          <div className="lg:col-span-12">
+            <PricingView 
+              onAddToast={triggerToast}
+            />
+          </div>
+        ) : activePage === "calendar" ? (
+          <div className="lg:col-span-12">
+            <CalendarView 
+              campaigns={campaigns}
+              accounts={accounts}
+              onAddToast={triggerToast}
+              onNavigateToUpload={() => {
+                setActivePage("upload");
+                setUploadStep(1);
+              }}
+              libraryItems={libraryItems}
+              onAddLibraryItem={(item) => setLibraryItems(prev => [item, ...prev])}
+              onRemoveLibraryItem={(id) => {
+                setLibraryItems(prev => prev.filter(item => item.id !== id));
+                setPlatformAttachments(prev => {
+                  const updated = { ...prev };
+                  Object.keys(updated).forEach(k => {
+                    if (updated[k]?.id === id) {
+                      delete updated[k];
+                    }
+                  });
+                  return updated;
+                });
+              }}
+              platformAttachments={platformAttachments}
+              setPlatformAttachments={setPlatformAttachments}
+              onDeleteCampaign={(id) => {
+                setCampaigns(prev => prev.filter(c => c.id !== id));
+              }}
+            />
+          </div>
+        ) : activePage === "docs" ? (
+          <div className="lg:col-span-12" key={docsTabOverride || "docs-guides"}>
+            <DocumentationView 
+              onAddToast={triggerToast}
+              onNavigatePage={(page: any) => {
+                setActivePage(page);
+              }}
+              initialTab={docsTabOverride}
+            />
+          </div>
+        ) : activePage === "profile" ? (
+          <div className="lg:col-span-12">
+            <ProfileView 
+              userEmail={authedUser?.email || "user@example.com"}
+              onLogout={async () => {
+                try {
+                  await logOutUser();
+                  triggerToast("👋 Checked out of the OmniCast authorized cycle.");
+                } catch (e) {
+                  triggerToast("Could not complete logout handoff");
+                }
+              }}
+              onAddToast={triggerToast}
+              onNavigateToTab={(tab) => {
+                setActivePage(tab);
+              }}
+            />
+          </div>
+        ) : activePage === "queue_settings" ? (
+          <div className="lg:col-span-12">
+            <QueueSettingsView 
+              onAddToast={triggerToast}
+              onBackToProfile={() => setActivePage("profile")}
+            />
+          </div>
+        ) : activePage === "invoices" ? (
+          <div className="lg:col-span-12">
+            <BillingInvoicesView 
+              onAddToast={triggerToast}
+              onBackToProfile={() => setActivePage("profile")}
+            />
+          </div>
+        ) : activePage === "connected_apps" ? (
+          <div className="lg:col-span-12">
+            <ConnectedAppsView 
+              onAddToast={triggerToast}
+              onBackToProfile={() => setActivePage("profile")}
+            />
+          </div>
+        ) : activePage === "team_management" ? (
+          <div className="lg:col-span-12">
+            <TeamManagementView 
+              onAddToast={triggerToast}
+              onNavigateToPricing={() => setActivePage("pricing")}
+              onBackToProfile={() => setActivePage("profile")}
+            />
+          </div>
+        ) : activePage === "history" ? (
+          <div className="lg:col-span-12">
+            <UploadHistoryView 
+              onAddToast={triggerToast}
+              onBackToProfile={() => setActivePage("profile")}
+              campaigns={campaigns}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Left Column: Form Editing, Accounts & Presets (7 cols) */}
+            <div className="lg:col-span-7 space-y-6 overflow-visible pr-0 lg:pr-1">
           
           {/* Preset Picker Trigger Panel */}
-          <Presets selectedId={selectedPresetId} onSelect={handleSelectPreset} />
+          {activePage === "upload" && uploadStep === 1 && (
+            <Presets selectedId={selectedPresetId} onSelect={handleSelectPreset} />
+          )}
 
-          {/* Connected accounts manager */}
-          <ConnectedAccounts
+          {activePage === "connections" && (
+            <>
+              {/* Connected accounts manager */}
+              <ConnectedAccounts
             accounts={accounts}
             onToggleConnect={handleToggleConnect}
             onUpdateUsername={handleUpdateUsername}
@@ -1596,7 +2260,12 @@ export default function App() {
           />
 
           {/* Real-world API Distribution Bridge Guide */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 space-y-4 shadow-sm" id="api-integration-bridge">
+          <motion.div 
+            layout
+            transition={{ type: "spring", stiffness: 220, damping: 28 }}
+            className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 space-y-4 shadow-sm" 
+            id="api-integration-bridge"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 bg-blue-600 rounded-full animate-pulse" />
@@ -1628,6 +2297,43 @@ export default function App() {
                     <p className="text-slate-550 leading-relaxed text-[11px] bg-slate-50/50 p-3 border border-slate-200/60 rounded-xl">
                       Omni-Cast is configured with a live server-side module (<code className="bg-slate-150 px-1 py-0.2 rounded text-[10px] font-mono text-purple-700">/server/platforms.ts</code>) capable of executing real multi-part video uploads and status polling on platform clusters. Once credentials are live, the <strong>Distribute All</strong> trigger routes payloads directly to production targets.
                     </p>
+
+                    {/* Daily API Budget Card */}
+                    <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2.5 shadow-2xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                            <Activity className="w-3.5 h-3.5 text-indigo-600" />
+                          </div>
+                          <div>
+                            <span className="font-extrabold text-[10.5px] text-slate-800 tracking-wider uppercase block leading-tight">Daily API Quota Budget</span>
+                            <span className="text-[9.5px] text-slate-450">Aggregate request density tracking across connected streams</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono text-xs font-black text-indigo-700 block leading-none">
+                            {totalQuotaUsed} / {totalQuotaMax} Reqs
+                          </span>
+                          <span className="text-[8px] font-bold text-slate-400 block uppercase tracking-widest mt-0.5">
+                            {totalQuotaPercent}% capacity filled
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="w-full bg-slate-200/70 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500" 
+                            style={{ width: `${totalQuotaPercent}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-[8.5px] text-slate-450 leading-none">
+                          <span>0 Reqs</span>
+                          <span className="font-semibold text-slate-500">80% Soft Cap threshold active</span>
+                          <span>{totalQuotaMax} Max</span>
+                        </div>
+                      </div>
+                    </div>
 
                 {/* Sub-tab selection grid */}
                 <div className="grid grid-cols-4 gap-1.5 border-b border-slate-200/80 pb-0 shrink-0">
@@ -1667,7 +2373,7 @@ export default function App() {
                           />
                         </span>
                         {tabIcon}
-                        <span>{tab === "youtube" ? "YouTube" : tab === "tiktok" ? "TikTok" : tab === "instagram" ? "Instagram" : "Facebook"}</span>
+                        <span className="hidden sm:inline">{tab === "youtube" ? "YouTube" : tab === "tiktok" ? "TikTok" : tab === "instagram" ? "Instagram" : "Facebook"}</span>
                       </button>
                     );
                   })}
@@ -1743,8 +2449,19 @@ export default function App() {
 
                             {/* Token Expiry Timer widget */}
                             <div className="bg-white/90 border border-rose-200/30 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
-                              <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center justify-between flex-wrap gap-1.5 text-[10px]">
                                 <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">Token Expiry Countdown</span>
+                                {healthStatus.youtube.status === "success" && healthStatus.youtube.expirySeconds !== undefined && (
+                                  <button
+                                    type="button"
+                                    onClick={() => forceRefreshToken("youtube")}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-widest bg-rose-50 text-rose-850 border border-rose-250 hover:border-rose-450 rounded hover:bg-rose-100/70 active:scale-95 transition-all cursor-pointer select-none leading-none -my-1"
+                                    title="Force OAuth Token Refresh"
+                                  >
+                                    <RefreshCw className="w-2 h-2" />
+                                    Force Refresh
+                                  </button>
+                                )}
                                 <span className="font-mono font-bold">
                                   {healthStatus.youtube.status === "success" && healthStatus.youtube.expirySeconds !== undefined ? (
                                     <span className="text-emerald-700 font-extrabold flex items-center gap-1">
@@ -1857,8 +2574,19 @@ YOUTUBE_CLIENT_SECRET=your_client_secret_here`}
 
                             {/* Token Expiry Timer widget */}
                             <div className="bg-white/90 border border-[#FE2C55]/10 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
-                              <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center justify-between flex-wrap gap-1.5 text-[10px]">
                                 <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">Token Expiry Countdown</span>
+                                {healthStatus.tiktok.status === "success" && healthStatus.tiktok.expirySeconds !== undefined && (
+                                  <button
+                                    type="button"
+                                    onClick={() => forceRefreshToken("tiktok")}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-widest bg-rose-50 border border-slate-200 text-[#FE2C55] rounded hover:bg-[#FE2C55]/5 active:scale-95 transition-all cursor-pointer select-none leading-none -my-1"
+                                    title="Force OAuth Token Refresh"
+                                  >
+                                    <RefreshCw className="w-2 h-2" />
+                                    Force Refresh
+                                  </button>
+                                )}
                                 <span className="font-mono font-bold">
                                   {healthStatus.tiktok.status === "success" && healthStatus.tiktok.expirySeconds !== undefined ? (
                                     <span className="text-emerald-700 font-extrabold flex items-center gap-1">
@@ -1967,8 +2695,19 @@ TIKTOK_SECRET=your_tiktok_secret_here`}
 
                             {/* Token Expiry Timer widget */}
                             <div className="bg-white/90 border border-pink-200/30 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
-                              <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center justify-between flex-wrap gap-1.5 text-[10px]">
                                 <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">Token Expiry Countdown</span>
+                                {healthStatus.instagram.status === "success" && healthStatus.instagram.expirySeconds !== undefined && (
+                                  <button
+                                    type="button"
+                                    onClick={() => forceRefreshToken("instagram")}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-widest bg-rose-50 border border-pink-200 text-pink-700 rounded hover:bg-pink-100/70 active:scale-95 transition-all cursor-pointer select-none leading-none -my-1"
+                                    title="Force OAuth Token Refresh"
+                                  >
+                                    <RefreshCw className="w-2 h-2" />
+                                    Force Refresh
+                                  </button>
+                                )}
                                 <span className="font-mono font-bold">
                                   {healthStatus.instagram.status === "success" && healthStatus.instagram.expirySeconds !== undefined ? (
                                     <span className="text-emerald-700 font-extrabold flex items-center gap-1">
@@ -2076,8 +2815,19 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
                             {/* Token Expiry Timer widget */}
                             <div className="bg-white/90 border border-blue-200/30 rounded-xl p-2.5 space-y-1.5 shadow-2xs">
-                              <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center justify-between flex-wrap gap-1.5 text-[10px]">
                                 <span className="font-bold text-slate-500 uppercase tracking-widest text-[8px]">Token Expiry Countdown</span>
+                                {healthStatus.facebook.status === "success" && healthStatus.facebook.expirySeconds !== undefined && (
+                                  <button
+                                    type="button"
+                                    onClick={() => forceRefreshToken("facebook")}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-widest bg-rose-50 border border-blue-200 text-blue-700 rounded hover:bg-blue-100/70 active:scale-95 transition-all cursor-pointer select-none leading-none -my-1"
+                                    title="Force OAuth Token Refresh"
+                                  >
+                                    <RefreshCw className="w-2 h-2" />
+                                    Force Refresh
+                                  </button>
+                                )}
                                 <span className="font-mono font-bold">
                                   {healthStatus.facebook.status === "success" && healthStatus.facebook.expirySeconds !== undefined ? (
                                     <span className="text-emerald-700 font-extrabold flex items-center gap-1">
@@ -2202,91 +2952,135 @@ META_APP_SECRET=your_meta_app_secret_here`}
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
+            </>
+          )}
 
           {/* Form Content Editor */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 space-y-5 shadow-xs relative">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Video Metadata Hub</h2>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-0.5">
-                  <p className="text-xs text-slate-400">Write raw values for translation & refinement</p>
-                  {lastSaved && (
-                    <span id="autosave-indicator" className="inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded font-bold select-none shrink-0">
-                      <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                      Saved {lastSaved}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 bg-slate-50/50 border border-slate-200 px-1.5 py-0.5 rounded select-none font-medium shrink-0">
-                    <kbd className="font-mono text-[8.5px] bg-white border border-slate-250 px-1 rounded shadow-[0_1px_0_rgba(148,163,184,0.15)] font-bold text-slate-600">Ctrl+S</kbd> Save Draft
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 bg-slate-50/50 border border-slate-200 px-1.5 py-0.5 rounded select-none font-medium shrink-0">
-                    <kbd className="font-mono text-[8.5px] bg-white border border-slate-250 px-1 rounded shadow-[0_1px_0_rgba(148,163,184,0.15)] font-bold text-slate-600">Ctrl+Enter</kbd> Distribute All
-                  </span>
+          {activePage === "upload" && (uploadStep === 1 || uploadStep === 2) && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 space-y-5 shadow-xs relative">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                    {uploadStep === 1 ? "Step 1: Vertical Clip Attachment" : "Step 2: Video Metadata Hub"}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-0.5">
+                    <p className="text-xs text-slate-400">
+                      {uploadStep === 1 ? "Import your vertical assets for cross-posting" : "Write raw values for translation & refinement"}
+                    </p>
+                    {uploadStep === 2 && lastSaved && (
+                      <span id="autosave-indicator" className="inline-flex items-center gap-1 text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-150 px-1.5 py-0.5 rounded font-bold select-none shrink-0">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                        Saved {lastSaved}
+                      </span>
+                    )}
+                    {uploadStep === 2 && (
+                      <>
+                        <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 bg-slate-50/50 border border-slate-200 px-1.5 py-0.5 rounded select-none font-medium shrink-0">
+                          <kbd className="font-mono text-[8.5px] bg-white border border-slate-250 px-1 rounded shadow-[0_1px_0_rgba(148,163,184,0.15)] font-bold text-slate-600">Ctrl+S</kbd> Save Draft
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[9.5px] text-slate-500 bg-slate-50/50 border border-slate-200 px-1.5 py-0.5 rounded select-none font-medium shrink-0">
+                          <kbd className="font-mono text-[8.5px] bg-white border border-slate-250 px-1 rounded shadow-[0_1px_0_rgba(148,163,184,0.15)] font-bold text-slate-600">Ctrl+Enter</kbd> Distribute All
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
+                {uploadStep === 2 && (
+                  <button
+                    type="button"
+                    onClick={handleOptimizeAPI}
+                    disabled={isOptimizing || (!title.trim() && !description.trim())}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isOptimizing
+                        ? "bg-slate-100 text-slate-400"
+                        : "bg-blue-50/85 hover:bg-blue-100 text-blue-700"
+                    }`}
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${isOptimizing ? "animate-spin" : "text-blue-600"}`} />
+                    {isOptimizing ? "Optimizing..." : "Optimize with AI"}
+                  </button>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={handleOptimizeAPI}
-                disabled={isOptimizing || (!title.trim() && !description.trim())}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isOptimizing
-                    ? "bg-slate-100 text-slate-400"
-                    : "bg-blue-50/85 hover:bg-blue-100 text-blue-700"
-                }`}
-              >
-                <Sparkles className={`w-3.5 h-3.5 ${isOptimizing ? "animate-spin" : "text-blue-600"}`} />
-                {isOptimizing ? "Optimizing..." : "Optimize with AI"}
-              </button>
-            </div>
 
-            {/* Title */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Working Broadcast Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter a descriptive raw title..."
-                className="w-full text-base font-bold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
-              />
-            </div>
+            {uploadStep === 2 && (
+              <>
+                {/* Title */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Working Broadcast Title
+                  </label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Enter a descriptive raw title..."
+                    className="w-full text-base font-bold text-slate-800 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
 
-            {/* Description */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Raw Post Description
-              </label>
-              <textarea
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Feed raw context, calls to action, or notes to translate into specific platform cultures..."
-                className="w-full text-sm text-slate-600 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none leading-relaxed"
-              />
-            </div>
+                {/* Description */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Raw Post Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Feed raw context, calls to action, or notes to translate into specific platform cultures..."
+                    className="w-full text-sm text-slate-600 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none leading-relaxed"
+                  />
+                </div>
 
-            {/* Hashtags input */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Reference Hashtags (comma-separated list)
-              </label>
-              <input
-                type="text"
-                value={hashtags}
-                onChange={(e) => setHashtags(e.target.value)}
-                placeholder="ai, design, marketing, coding"
-                className="w-full text-xs font-mono text-blue-600 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
-              />
-            </div>
+                {/* Reference Hashtags */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Reference Hashtags (comma-separated list)
+                  </label>
+                  <input
+                    type="text"
+                    value={hashtags}
+                    onChange={(e) => setHashtags(e.target.value)}
+                    placeholder="ai, design, marketing, coding"
+                    className="w-full text-xs font-mono text-blue-600 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+
+                {/* Micro Thumbnail summary helper for Step 2 */}
+                {videoFile && (
+                  <div className="p-3 bg-indigo-50/20 border border-indigo-150 rounded-xl flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-10 bg-slate-100 border border-slate-200 rounded overflow-hidden relative shrink-0">
+                        {videoFile.thumbnail ? (
+                          <img src={videoFile.thumbnail} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <Film className="w-4 h-4 text-slate-405 m-auto" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-extrabold text-indigo-950 block truncate">Attached clip: {videoFile.name}</span>
+                        <span className="text-[10px] text-slate-500 block block font-mono font-semibold">{videoFile.size} • parsed securely</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUploadStep(1)}
+                      className="px-2.5 py-1 text-[10px] font-bold bg-white text-indigo-750 border border-indigo-200 rounded-lg hover:bg-indigo-50 cursor-pointer select-none whitespace-nowrap"
+                    >
+                      Change Media
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Video File Drag-and-Drop Slot (Guideline Compliant!) */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Linked Media Attachment
-              </span>
+            {uploadStep === 1 && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Linked Media Attachment
+                </span>
               
               {videoFile ? (
                 <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/50 space-y-3">
@@ -2469,18 +3263,18 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
                     {/* Instagram Reels */}
                     <div className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between transition-colors ${
-                      videoFile.duration > 900 
+                      videoFile.duration > 1200 
                         ? "bg-rose-50/40 border-rose-200 text-rose-950" 
                         : "bg-white border-slate-200 text-slate-800"
                     }`}>
                       <div className="font-bold flex items-center justify-between">
                         <span>Instagram Reels</span>
-                        <span className="text-[9px] font-bold font-mono px-1 bg-slate-100 rounded text-slate-500">Max 15m (900s)</span>
+                        <span className="text-[9px] font-bold font-mono px-1 bg-slate-100 rounded text-slate-500">Max 20m (1200s)</span>
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-                        {videoFile.duration > 900 
-                          ? "❌ Rejected: Video exceeds Instagram Reels 15-minute cap." 
-                          : "✓ Safe: Fully compliant with Reels."}
+                        {videoFile.duration > 1200 
+                          ? "❌ Rejected: Video exceeds Instagram Reels 20-minute cap." 
+                          : "✓ Safe: Compliant (3m in-app direct, up to 20m pre-recorded upload file)."}
                       </p>
                     </div>
 
@@ -2497,35 +3291,104 @@ META_APP_SECRET=your_meta_app_secret_here`}
                       <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
                         {videoFile.duration > 3600 
                           ? "❌ Rejected: Exceeds TikTok 60-minute maximum upload threshold." 
-                          : "✓ Safe: Fully supported for direct upload dispatch."}
+                          : "✓ Safe: Compliant (10m in-app direct, up to 60m upload video file)."}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200/60 flex flex-wrap items-center justify-between gap-2.5 text-[10px] text-slate-500">
-                    <span className="font-bold text-slate-400 uppercase tracking-wider block">Simulate Durations to Verify Alerts:</span>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="range" 
-                        min="10" 
-                        max="240" 
-                        value={Math.round(videoFile.duration) > 240 ? 240 : Math.round(videoFile.duration)}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value);
-                          setVideoFile(prev => prev ? { ...prev, duration: val } : null);
-                        }}
-                        className="w-24 bg-slate-200 rounded-lg appearance-none cursor-pointer h-1 accent-indigo-600"
-                      />
-                      <span className="font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-indigo-600 font-bold">{Math.round(videoFile.duration)}s</span>
+                  <div className="pt-2.5 border-t border-slate-200/60 flex flex-col gap-2 text-[10px] text-slate-500">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-bold text-slate-400 uppercase tracking-wider block">Simulate Durations to Verify Alerts:</span>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="range" 
+                          min="10" 
+                          max="3800" 
+                          value={Math.round(videoFile.duration) > 3800 ? 3800 : Math.round(videoFile.duration)}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            setVideoFile(prev => prev ? { ...prev, duration: val } : null);
+                          }}
+                          className="w-24 bg-slate-200 rounded-lg appearance-none cursor-pointer h-1 accent-indigo-600"
+                        />
+                        <span className="font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-indigo-600 font-bold">
+                          {Math.round(videoFile.duration || 0) >= 60 
+                            ? `${Math.floor((videoFile.duration || 0) / 60)}m ${Math.round((videoFile.duration || 0) % 60)}s` 
+                            : `${Math.round(videoFile.duration || 0)}s`}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Simulation Quick Presets */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-slate-400 font-semibold">Presets:</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setVideoFile(prev => prev ? { ...prev, duration: 15 } : null)} 
+                        className={`px-1.5 py-0.5 border rounded font-mono text-[9px] cursor-pointer transition-colors ${
+                          videoFile.duration === 15 ? "bg-indigo-600 border-indigo-600 text-white font-bold" : "bg-white border-slate-200 hover:border-indigo-300 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        15s
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setVideoFile(prev => prev ? { ...prev, duration: 85 } : null)} 
+                        className={`px-1.5 py-0.5 border rounded font-mono text-[9px] cursor-pointer transition-colors ${
+                          videoFile.duration === 85 ? "bg-indigo-600 border-indigo-600 text-white font-bold" : "bg-white border-slate-200 hover:border-indigo-300 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        85s (Reels Safe)
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setVideoFile(prev => prev ? { ...prev, duration: 175 } : null)} 
+                        className={`px-1.5 py-0.5 border rounded font-mono text-[9px] cursor-pointer transition-colors ${
+                          videoFile.duration === 175 ? "bg-indigo-600 border-indigo-600 text-white font-bold" : "bg-white border-slate-200 hover:border-indigo-300 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        2.9m (Shorts Max)
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setVideoFile(prev => prev ? { ...prev, duration: 1100 } : null)} 
+                        className={`px-1.5 py-0.5 border rounded font-mono text-[9px] cursor-pointer transition-colors ${
+                          videoFile.duration === 1100 ? "bg-indigo-600 border-indigo-600 text-white font-bold" : "bg-white border-slate-200 hover:border-indigo-300 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        18m (Reels Upload)
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setVideoFile(prev => prev ? { ...prev, duration: 3500 } : null)} 
+                        className={`px-1.5 py-0.5 border rounded font-mono text-[9px] cursor-pointer transition-colors ${
+                          videoFile.duration === 3500 ? "bg-indigo-600 border-indigo-600 text-white font-bold" : "bg-white border-slate-200 hover:border-indigo-300 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        58m (TikTok Upload)
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setVideoFile(prev => prev ? { ...prev, duration: 3700 } : null)} 
+                        className={`px-1.5 py-0.5 border rounded font-mono text-[9px] cursor-pointer transition-colors ${
+                          videoFile.duration === 3700 ? "bg-indigo-600 border-indigo-600 text-white font-bold" : "bg-white border-slate-200 hover:border-indigo-300 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        61m (Over Limit)
+                      </button>
                     </div>
                   </div>
                 </div>
               )}
+              </div>
+            )}
             </div>
-          </div>
+          )}
 
           {/* Advanced Media Library & Multi-Clip Router */}
-          <MediaLibrary
+          {activePage === "content" && (
+            <>
+              <MediaLibrary
             accounts={accounts}
             attachments={platformAttachments}
             onUpdateAttachments={setPlatformAttachments}
@@ -2545,30 +3408,351 @@ META_APP_SECRET=your_meta_app_secret_here`}
             }}
           />
 
-          {/* Informative Warning box */}
-          <div className="bg-blue-600/5 border border-blue-105 rounded-xl p-4 flex items-start space-x-3.5 shadow-xs">
-            <div className="bg-blue-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold tracking-tight italic select-none">
-              i
+              {/* Informative Warning box */}
+              <div className="bg-blue-600/5 border border-blue-105 rounded-xl p-4 flex items-start space-x-3.5 shadow-xs">
+                <div className="bg-blue-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold tracking-tight italic select-none">
+                  i
+                </div>
+                <div className="text-xs text-blue-900 leading-relaxed font-sans">
+                  <strong>Optimization rule in progress:</strong> Captions, spacer layouts, and hashtags automatically comply with maximum characters (YouTube Shorts: 100 on Title, Instagram Reels: 2,200, Facebook: 2,000, TikTok: 2,200 characters) upon AI injection. Use the tabs on the right to edit individual channels before distribution.
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Step 3: Publishing Summary Checklist */}
+          {activePage === "upload" && uploadStep === 3 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 space-y-5 shadow-sm">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 animate-pulse" />
+                  Broadcast Checklist Summary
+                </h3>
+                <p className="text-xs text-slate-400">Review your final vertical distribution specifications prior to finalization.</p>
+              </div>
+
+              {videoFile && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5">
+                  <div className="flex gap-4">
+                    <div className="w-16 h-20 bg-slate-200 border border-slate-300 rounded-lg overflow-hidden relative shrink-0">
+                      {videoFile.thumbnail ? (
+                        <img src={videoFile.thumbnail} alt="Active cover frame" className="w-full h-full object-cover" />
+                      ) : (
+                        <Film className="w-6 h-6 m-auto mt-7 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <span className="text-xs font-bold text-slate-800 block truncate leading-tight">{videoFile.name}</span>
+                      <span className="text-[10px] text-slate-400 block font-mono font-semibold">Size: {videoFile.size}</span>
+                      <span className="text-[10px] text-slate-405 block font-mono font-semibold">Trimmed Duration: {Math.round(videoFile.duration)} seconds</span>
+                      <span className="inline-flex mt-1 items-center px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-indigo-50 text-indigo-750 font-sans tracking-wider">
+                        Strategy: {publishStrategy === "now" ? "INSTANT DISPATCH" : "SCHEDULED IN QUEUE"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Target Output Connection Pipeline</span>
+                <div className="space-y-2">
+                  {accounts.map(acc => {
+                    const isConnected = acc.connected;
+                    return (
+                      <div key={acc.id} className="flex items-center justify-between p-2.5 border border-slate-100 rounded-lg bg-slate-50/20 text-xs text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <img src={acc.avatarUrl} alt={acc.username} className="w-6 h-6 rounded-full ring-1 ring-slate-200 object-cover" />
+                          <div>
+                            <span className="font-extrabold text-[11px] block text-slate-800 uppercase">{acc.platform.replace("_shorts", "").toUpperCase()}</span>
+                            <span className="text-[9.5px] text-slate-450 font-mono">{isConnected ? acc.username : "Connection inactive"}</span>
+                          </div>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-mono font-black ${
+                          isConnected ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"
+                        }`}>
+                          {isConnected ? "PIPELINE_READY" : "BYPASSED"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-blue-900 leading-relaxed font-sans">
-              <strong>Optimization rule in progress:</strong> Captions, spacer layouts, and hashtags automatically comply with maximum characters (YouTube Shorts: 100 on Title, Instagram Reels: 2,200, Facebook: 2,000, TikTok: 2,200 characters) upon AI injection. Use the tabs on the right to edit individual channels before distribution.
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Right Column: AI Output Captions & Active Previews (5 cols) */}
-        <div className="lg:col-span-5 space-y-6 flex flex-col justify-start">
+        <div className="lg:col-span-12 lg:col-span-5 space-y-6 flex flex-col justify-start">
           
           <div className="flex items-center justify-between">
-            <h2 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Engine Preview Output</h2>
+            <h2 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">
+              {activePage === "upload" && `Step ${uploadStep}: Live Controls`}
+            </h2>
             <div className="flex gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">Live sync rendering</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wide">
+                {activePage === "upload" && uploadStep === 3 ? "Real-time sync render" : "System Monitored"}
+              </span>
             </div>
           </div>
 
+          {/* CONNECTIONS Right Column: Daily API Budget and Quotas */}
+          {activePage === "connections" && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 shadow-sm space-y-5">
+                <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Daily API Quotas & Budget</h3>
+                    <p className="text-xs text-slate-400">Total requests across connected API networks</p>
+                  </div>
+                  <span className="px-2 py-0.5 text-[9px] font-mono font-bold bg-slate-50 border border-slate-200 rounded text-indigo-600">
+                    24H CYCLE
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Progress bar representing aggregated requests */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-semibold text-slate-600">
+                      <span>Aggregate Quota Load</span>
+                      <span className="font-mono text-indigo-700 font-bold">42% (42/100 requests)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: "42%" }} />
+                    </div>
+                  </div>
+
+                  {/* Individual API statuses */}
+                  <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
+                    <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">TikTok API</span>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-800">12 / 30</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      </div>
+                    </div>
+                    <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Instagram API</span>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-800">18 / 30</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      </div>
+                    </div>
+                    <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Facebook API</span>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-800">8 / 20</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      </div>
+                    </div>
+                    <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">YouTube API</span>
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-800">4 / 20</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* API Diagnostics summary */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 shadow-sm space-y-4">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Sync & Token Status</h3>
+                </div>
+                <div className="space-y-3 text-xs leading-relaxed text-slate-600">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Automatic Silent Token Refresh:</span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-mono text-[10px] font-black">ACTIVE (&lt; 300s)</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Your social tokens are verified automatically in real-time. If any expiration timer falls below 300 seconds, a silent token exchange request executes instantly and triggers a fleeting toast notification.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CONTENT Right Column: Statistics & Highlights */}
+          {activePage === "content" && (
+            <div className="space-y-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 shadow-sm space-y-4">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Broadcasting Statistics</h3>
+                  <p className="text-xs text-slate-400">Performance overview for currently saved campaigns</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1 flex flex-col justify-between">
+                    <span className="text-slate-500 font-medium">Delivered Posts</span>
+                    <span className="text-2xl font-extrabold text-slate-800 leading-tight">
+                      {campaigns.filter(c => c.status !== "queued").length}
+                    </span>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1 flex flex-col justify-between">
+                    <span className="text-slate-500 font-medium">Scheduled Queue</span>
+                    <span className="text-xl font-extrabold text-amber-600 leading-tight">
+                      {campaigns.filter(c => c.status === "queued").length} Scheduled
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 text-xs text-slate-400 leading-relaxed font-sans">
+                  The distribution engine stores scheduled posts in the active local storage dispatcher. When the timer matches, the publication transmits to your API endpoints instantly.
+                </div>
+              </div>
+
+              {/* Tips card */}
+              <div className="bg-indigo-900 border border-indigo-950 text-indigo-50 rounded-2xl p-5 lg:p-6 shadow-md relative overflow-hidden">
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-800/40 rounded-full blur-xl" />
+                <h4 className="font-extrabold text-xs uppercase tracking-widest text-indigo-200 mb-1.5 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  SaaS Dispatch Pro-Tip
+                </h4>
+                <p className="text-xs text-indigo-100 leading-relaxed font-sans font-medium">
+                  Vertical cross-posting thrives on dynamic cover curation. Select dedicated high-retention thumbnail frames during Step 3 of the editor wizard for optimized performance.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* EDITOR Step 1 Right Column: Next Step Guidance */}
+          {activePage === "upload" && uploadStep === 1 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 shadow-sm space-y-5 text-center flex flex-col items-center justify-center min-h-[400px]">
+              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-1">
+                <Film className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1.5 max-w-[280px]">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Upload Video Media</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Import any vertical video (MP4/WebM) via drag-and-drop on the left, or pick one of our fast templates above.
+                </p>
+              </div>
+
+              {videoFile ? (
+                <div className="pt-4 w-full max-w-sm space-y-3">
+                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-left text-xs flex gap-3.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 animate-bounce" />
+                    <div>
+                      <span className="font-extrabold text-emerald-950 block">Media Verified Successfully!</span>
+                      <p className="text-[10px] text-emerald-700 leading-normal mt-0.5">
+                        Duration is {Math.round(videoFile.duration)}s. Click the button below to fill in details.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setUploadStep(2)}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    Configure Details & Schedule
+                    <ArrowRight className="w-3.5 h-3.5 animate-pulse" />
+                  </button>
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-50/50 border border-slate-150 rounded-xl w-full max-w-xs text-xs text-indigo-900 border-indigo-100 bg-indigo-50/20 text-center font-bold">
+                  ⚠️ Waiting for media file attachment...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* EDITOR Step 2 Right Column: Posting Strategy Curation */}
+          {activePage === "upload" && uploadStep === 2 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 shadow-sm space-y-5 font-sans">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-sans">Configure Post Strategy</h3>
+                <p className="text-xs text-slate-400">Decide when or if you want to publish immediately or delay queue slot.</p>
+              </div>
+
+              {/* Strategy selectors */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPublishStrategy("now")}
+                  className={`flex flex-col p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    publishStrategy === "now"
+                      ? "bg-indigo-50/15 border-indigo-600 ring-2 ring-indigo-100"
+                      : "bg-white border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1 text-slate-800">
+                    <Sparkles className={`w-4 h-4 ${publishStrategy === "now" ? "text-indigo-600" : "text-slate-500"}`} />
+                    <span className="text-xs font-bold">Publish Now</span>
+                  </div>
+                  <span className="text-[9.5px] text-slate-400 leading-relaxed">Broadcast to your channels immediately.</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPublishStrategy("later")}
+                  className={`flex flex-col p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    publishStrategy === "later"
+                      ? "bg-indigo-50/15 border-indigo-600 ring-2 ring-indigo-100"
+                      : "bg-white border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1 text-slate-800">
+                    <Calendar className={`w-4 h-4 ${publishStrategy === "later" ? "text-indigo-600" : "text-slate-500"}`} />
+                    <span className="text-xs font-bold font-sans">Schedule for Later</span>
+                  </div>
+                  <span className="text-[9.5px] text-slate-400 leading-relaxed">Time-lock the cross-post queue for future.</span>
+                </button>
+              </div>
+
+              {/* Datetime Pickers inside Column */}
+              {publishStrategy === "later" && (
+                <div className="space-y-1.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <label className="text-[10px] uppercase font-bold text-slate-450 tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-indigo-600 animate-spin" style={{ animationDuration: "12s" }} />
+                    Specify Queue Release Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduledDateTime}
+                    onChange={(e) => setScheduledDateTime(e.target.value)}
+                    className="w-full text-xs font-bold text-slate-850 text-slate-800 bg-white border border-slate-350 rounded-lg p-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono"
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono mt-1">
+                    <span>Timezone: Local system</span>
+                    {scheduledDateTime && (
+                      <span className="text-indigo-600 font-bold">
+                        Target: {new Date(scheduledDateTime).toLocaleDateString()} {new Date(scheduledDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Step Navigation Button to Proceed */}
+              <div className="pt-2 border-t border-slate-100 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setUploadStep(1)}
+                  className="px-3 py-2 text-xs font-bold border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl text-slate-600 transition-all cursor-pointer select-none whitespace-nowrap"
+                >
+                  ← Back to Step 1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadStep(3)}
+                  disabled={!title.trim()}
+                  className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1.5"
+                >
+                  Step 3: Custom Content
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Social Platform Previews Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col min-h-[480px]">
+          {activePage === "upload" && uploadStep === 3 && (
+            <>
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col min-h-[480px]">
             
             {/* Horizontal Platform Selectors */}
             <div className="flex border-b border-slate-100 pb-2.5 mb-4 gap-1 overflow-x-auto">
@@ -2626,26 +3810,32 @@ META_APP_SECRET=your_meta_app_secret_here`}
                 <button
                   type="button"
                   onClick={() => setPreviewSubTab("config")}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
                     previewSubTab === "config"
                       ? "bg-white text-slate-800 shadow-xs"
                       : "text-slate-500 hover:text-slate-800"
                   }`}
                 >
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-600" />
-                  Channel Setup & Config
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                  <span className="truncate">
+                    <span className="hidden sm:inline">Channel Setup & Config</span>
+                    <span className="sm:hidden">Setup</span>
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPreviewSubTab("feed")}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
                     previewSubTab === "feed"
                       ? "bg-indigo-650 text-white shadow-xs font-extrabold"
                       : "text-indigo-600/75 hover:text-indigo-800"
                   }`}
                 >
-                  <Eye className="w-3.5 h-3.5" />
-                  Actual Feed Preview
+                  <Eye className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">
+                    <span className="hidden sm:inline">Actual Feed Preview</span>
+                    <span className="sm:hidden">Feed Preview</span>
+                  </span>
                 </button>
               </div>
             )}
@@ -3684,8 +4874,12 @@ META_APP_SECRET=your_meta_app_secret_here`}
               </div>
             </div>
           )}
+          </>
+        )}
 
         </div>
+      </>
+    )}
 
       </main>
 
@@ -4059,107 +5253,545 @@ META_APP_SECRET=your_meta_app_secret_here`}
       {/* Historic Campaigns Drawer Section */}
       <footer className="bg-white border-t border-slate-200/90 py-8 px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Localized Distribution History</h3>
-              <p className="text-xs text-slate-400">Persistent client analytics & previous broadcasts</p>
-            </div>
-            <span className="text-[10px] font-mono bg-slate-100 text-slate-500 font-bold uppercase tracking-wide px-2 py-1 rounded">
-              Durable Storage active
-            </span>
-          </div>
+          {activePage === "content" && (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Localized Distribution History</h3>
+                  <p className="text-xs text-slate-405">Persistent client analytics & previous broadcasts</p>
+                </div>
+                <span className="text-[10px] font-mono bg-slate-100 text-slate-500 font-bold uppercase tracking-wide px-2 py-1 rounded">
+                  Durable Storage active
+                </span>
+              </div>
 
-          {campaigns.length === 0 ? (
-            <div className="text-center py-6 bg-slate-50/50 rounded-xl border border-slate-200 text-xs text-slate-450">
-              No previous broadcasts saved locally yet. Run "Distribute All" to populate historic logs.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {campaigns.map((camp) => (
-                <div
-                  key={camp.id}
-                  className={`border rounded-xl p-4 flex gap-4 hover:border-slate-300 transition-all relative overflow-hidden ${camp.status === "queued" ? "bg-amber-50/15 border-amber-200/60" : "bg-slate-50/50 border-slate-200"}`}
-                >
-                  <div className="w-16 h-20 bg-slate-200 rounded overflow-hidden relative shrink-0">
-                    <img src={camp.thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
-                      {camp.status === "queued" ? (
-                        <Clock className="w-4 h-4 text-amber-400 stroke-[2.5]" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5 text-white fill-white" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="min-w-0 flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="text-xs font-bold text-slate-800 truncate">{camp.title}</p>
-                          {camp.status === "queued" && (
-                            <span className="px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase bg-amber-50 text-amber-700 border border-amber-200 rounded shrink-0">
-                              Scheduled
-                            </span>
+              {campaigns.length === 0 ? (
+                <div className="text-center py-6 bg-slate-50/50 rounded-xl border border-slate-200 text-xs text-slate-455">
+                  No previous broadcasts saved locally yet. Run "Distribute All" to populate historic logs.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {campaigns.map((camp) => (
+                    <div
+                      key={camp.id}
+                      className={`border rounded-xl p-4 flex gap-4 hover:border-slate-300 transition-all relative overflow-hidden ${camp.status === "queued" ? "bg-amber-50/15 border-amber-200/60" : "bg-slate-50/50 border-slate-200"}`}
+                    >
+                      <div className="w-16 h-20 bg-slate-200 rounded overflow-hidden relative shrink-0">
+                        <img src={camp.thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
+                          {camp.status === "queued" ? (
+                            <Clock className="w-4 h-4 text-amber-400 stroke-[2.5]" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 text-white fill-white" />
                           )}
                         </div>
-                        <button
-                          onClick={(e) => handleDeleteCampaign(camp.id, e)}
-                          className="text-slate-400 hover:text-rose-600 p-0.5 shrink-0"
-                          title="Delete broadcast history entry"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
                       </div>
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">{camp.description}</p>
-                    </div>
 
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-200/50 mt-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {Object.entries(camp.platforms).map(([plat, active]) => {
-                          if (!active) return null;
-                          return (
-                            <span
-                              key={plat}
-                              className="px-1 text-[8px] font-bold uppercase bg-slate-200 text-slate-600 rounded"
+                      <div className="min-w-0 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate">{camp.title}</p>
+                              {camp.status === "queued" && (
+                                <span className="px-1.5 py-0.5 text-[8.5px] font-extrabold uppercase bg-amber-50 text-amber-700 border border-amber-200 rounded shrink-0">
+                                  Scheduled
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => handleDeleteCampaign(camp.id, e)}
+                              className="text-slate-400 hover:text-rose-600 p-0.5 shrink-0"
+                              title="Delete broadcast history entry"
                             >
-                              {plat.replace("_shorts", "")}
-                            </span>
-                          );
-                        })}
-                      </div>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate mt-0.5">{camp.description}</p>
+                        </div>
 
-                      <span className="font-mono text-slate-500 flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5" />
-                        {camp.publishDate}
-                      </span>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-200/50 mt-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {Object.entries(camp.platforms).map(([plat, active]) => {
+                              if (!active) return null;
+                              return (
+                                <span
+                                  key={plat}
+                                  className="px-1 text-[8px] font-bold uppercase bg-slate-200 text-slate-605 rounded"
+                                >
+                                  {plat.replace("_shorts", "")}
+                                </span>
+                              );
+                            })}
+                          </div>
+
+                          <span className="font-mono text-slate-505 flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            {camp.publishDate}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
+
+          {/* Core Footer Columns (Like UploadPost Screenshot) */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-t border-slate-200 pt-8 text-xs text-slate-500">
+            {/* Column 1: Brand Info */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <img 
+                  src="https://past-aquamarine-opezzkg3.edgeone.app/logo%204%20(2).png" 
+                  alt="OmniCast Logo" 
+                  className="w-6 h-6 object-contain rounded-md"
+                  referrerPolicy="no-referrer"
+                />
+                <span className="font-black text-sm text-slate-900">OmniCast</span>
+              </div>
+              <p className="text-[11px] text-slate-450 leading-relaxed max-w-xs">
+                Your API solution for all social media platforms. Simplifying content management for developers and creators.
+              </p>
+            </div>
+
+            {/* Column 2: Product */}
+            <div className="space-y-2.5">
+              <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Product</h5>
+              <ul className="space-y-1.5 font-medium">
+                <li><button type="button" onClick={() => { setActivePage("upload"); setUploadStep(1); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Dashboard</button></li>
+                <li><button type="button" onClick={() => { setActivePage("users"); triggerToast("Managing custom upload profiles"); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Manage Profiles</button></li>
+                <li><button type="button" onClick={() => setActivePage("pricing")} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Pricing</button></li>
+                <li><button type="button" onClick={() => { setActivePage("profile"); triggerToast("Viewing subscription & billing details"); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Billing & Usage</button></li>
+              </ul>
+            </div>
+
+            {/* Column 3: Resources */}
+            <div className="space-y-2.5">
+              <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Resources</h5>
+              <ul className="space-y-1.5 font-medium">
+                <li><button type="button" onClick={() => { setActivePage("apikeys"); triggerToast("Opening API Keys..."); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">API & Integrations</button></li>
+                <li><button type="button" onClick={() => { setDocsTabOverride("guides"); setActivePage("docs"); triggerToast("Opening Documentation..."); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Documentation</button></li>
+              </ul>
+            </div>
+
+            {/* Column 4: Support */}
+            <div className="space-y-2.5">
+              <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Support</h5>
+              <ul className="space-y-1.5 font-medium">
+                <li>
+                  <button 
+                    type="button" 
+                    onClick={() => { 
+                      setDocsTabOverride("helpdesk");
+                      setActivePage("docs"); 
+                      triggerToast("Opening Help Center in Docs Desk..."); 
+                    }} 
+                    className="hover:text-indigo-600 transition-colors cursor-pointer text-left"
+                  >
+                    Help Center
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    type="button" 
+                    onClick={() => { 
+                      setDocsTabOverride("review");
+                      setActivePage("docs"); 
+                      triggerToast("Opening Reviews Feed in Docs Desk..."); 
+                    }} 
+                    className="hover:text-indigo-600 transition-colors cursor-pointer text-left"
+                  >
+                    Leave a review ⭐
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
 
           {/* Legal Pages & Disclosures Band */}
           <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-slate-700">Omni-Cast</span>
+              <span className="font-black text-slate-705">OmniCast</span>
               <span>•</span>
-              <span>Platform Distribution Hub</span>
+              <span className="font-semibold text-slate-500">Cross-Platform Hub</span>
               <span>•</span>
-              <span className="font-medium text-slate-500">Lewis Iraki</span>
+              <span>© {new Date().getFullYear()} OmniCast. All rights reserved.</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <a href="/terms" target="_blank" className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+            <div className="flex items-center space-x-4 animate-pulse-slow">
+              <a href="#terms-of-service" onClick={(e) => e.preventDefault()} className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
                 Terms of Service
               </a>
               <span>•</span>
-              <a href="/privacy" target="_blank" className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+              <a href="#privacy-policy" onClick={(e) => e.preventDefault()} className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
                 Privacy Policy
               </a>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Mobile & Tablet Bottom Navigation Bar */}
+      <div id="mobile-bottom-nav" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 z-40 px-2 py-1 flex items-center justify-around shadow-[0_-8px_30px_rgba(15,23,42,0.06)] select-none">
+        
+        {/* Button 1: Upload (Dashboard) */}
+        <button
+          type="button"
+          onClick={() => {
+            setActivePage("upload");
+            setUploadStep(1);
+            setIsMobileMoreOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-all ${
+            activePage === "upload" ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Film className="w-5 h-5" />
+          <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Upload</span>
+          {activePage === "upload" && (
+            <span className="absolute bottom-0 w-4 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        {/* Button 2: Profiles (Users) */}
+        <button
+          type="button"
+          onClick={() => {
+            setActivePage("users");
+            setIsMobileMoreOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-all ${
+            activePage === "users" ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Users className="w-5 h-5" />
+          <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Profiles</span>
+          {activePage === "users" && (
+            <span className="absolute bottom-0 w-4 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        {/* Button 3: Calendar */}
+        <button
+          type="button"
+          onClick={() => {
+            setActivePage("calendar");
+            setIsMobileMoreOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-all ${
+            activePage === "calendar" ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Calendar className="w-5 h-5" />
+          <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Calendar</span>
+          {activePage === "calendar" && (
+            <span className="absolute bottom-0 w-4 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        {/* Button 4: Analytics */}
+        <button
+          type="button"
+          onClick={() => {
+            setActivePage("analytics");
+            setIsMobileMoreOpen(false);
+          }}
+          className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-all ${
+            activePage === "analytics" ? "text-indigo-600 font-extrabold" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <LineChart className="w-5 h-5" />
+          <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">Analytics</span>
+          {activePage === "analytics" && (
+            <span className="absolute bottom-0 w-4 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        {/* Button 5: More (Command drawer) */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileMoreOpen(!isMobileMoreOpen);
+          }}
+          className={`flex flex-col items-center justify-center py-1 flex-1 relative transition-all ${
+            isMobileMoreOpen ? "text-[#4F46E5] font-extrabold" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] font-bold mt-1 tracking-wider uppercase">More</span>
+          {isMobileMoreOpen && (
+            <span className="absolute bottom-0 w-4 h-0.5 bg-[#4F46E5] rounded-full" />
+          )}
+        </button>
+      </div>
+
+      {/* Slide-Up Mobile "More" Bottom Sheet Drawer */}
+      <AnimatePresence>
+        {isMobileMoreOpen && (
+          <motion.div
+            id="mobile-more-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-[3px] z-50 flex items-end justify-center lg:hidden"
+            onClick={() => setIsMobileMoreOpen(false)}
+          >
+            <motion.div
+              id="mobile-more-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="bg-white w-full max-w-xl rounded-t-[2.25rem] shadow-[0_-12px_40px_rgba(15,23,42,0.12)] border-t border-slate-100 p-6 pb-26 flex flex-col max-h-[85vh] focus:outline-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Visual pull/drag indicator pill */}
+              <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-5 shrink-0" />
+
+              {/* Header of sheet */}
+              <div className="flex items-center justify-between mb-6 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-indigo-600 text-sm animate-pulse">✦</span>
+                  <h3 className="font-extrabold text-slate-800 text-xs tracking-wider uppercase font-sans">
+                    OmniCast Command
+                  </h3>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setIsMobileMoreOpen(false)}
+                  className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-full transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scrollable Grid of remaining pages */}
+              <div className="grid grid-cols-2 gap-3 mb-6 overflow-y-auto pr-1">
+                
+                {/* Profile */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("profile");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "profile" 
+                      ? "bg-indigo-50/50 border-indigo-200 text-indigo-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <User className="w-4 h-4 text-indigo-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Profile</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Preferences</p>
+                  </div>
+                </button>
+
+                {/* History */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("history");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "history" 
+                      ? "bg-blue-50/50 border-blue-200 text-blue-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <History className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">History</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Past uploads</p>
+                  </div>
+                </button>
+
+                {/* Queue Settings */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("queue_settings");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "queue_settings" 
+                      ? "bg-emerald-50/50 border-emerald-200 text-emerald-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <Clock className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Queue</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Time Slots</p>
+                  </div>
+                </button>
+
+                {/* Billing & Invoices */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("invoices");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "invoices" 
+                      ? "bg-amber-50/50 border-amber-200 text-amber-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <CreditCard className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Invoices</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Billing details</p>
+                  </div>
+                </button>
+
+                {/* Connected Apps */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("connected_apps");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "connected_apps" 
+                      ? "bg-indigo-50/50 border-indigo-200 text-indigo-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <Key className="w-4 h-4 text-indigo-550" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Apps Bridge</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Integrations</p>
+                  </div>
+                </button>
+
+                {/* Team Management */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("team_management");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "team_management" 
+                      ? "bg-purple-50/50 border-purple-200 text-purple-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <Users className="w-4 h-4 text-purple-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Team Admin</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Seats & roles</p>
+                  </div>
+                </button>
+
+                {/* API Keys */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("apikeys");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "apikeys" 
+                      ? "bg-rose-50/50 border-rose-200 text-rose-905" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <Key className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">API Keys</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Credentials</p>
+                  </div>
+                </button>
+
+                {/* Pricing Plans */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("pricing");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    activePage === "pricing" 
+                      ? "bg-indigo-50/50 border-indigo-200 text-indigo-900" 
+                      : "bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <DollarSign className="w-4 h-4 text-indigo-505" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Plans</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Limits & Billing</p>
+                  </div>
+                </button>
+
+                {/* Docs & Guides */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("docs");
+                    setDocsTabOverride("guides");
+                    setIsMobileMoreOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border col-span-2 text-left transition-all cursor-pointer ${
+                    activePage === "docs" 
+                      ? "bg-slate-100 border-slate-350 text-slate-900" 
+                      : "bg-slate-50 border-slate-150 text-slate-700 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <div className="p-2 bg-white rounded-lg shadow-2xs border border-slate-100 shrink-0">
+                    <BookOpen className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-[11px] uppercase tracking-wide truncate">Docs & Support Guides</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5 font-medium truncate">Read developers manual & platform handbooks</p>
+                  </div>
+                </button>
+
+              </div>
+
+              {/* Sign out */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsMobileMoreOpen(false);
+                  try {
+                    await logOutUser();
+                    triggerToast("👋 Checked out of the OmniCast authorized cycle.");
+                  } catch (e) {
+                    triggerToast("Could not complete logout handoff");
+                  }
+                }}
+                className="w-full shrink-0 py-3.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-extrabold text-xs rounded-2xl tracking-wide uppercase flex items-center justify-center gap-2 transition-all cursor-pointer animate-pulse-slow"
+              >
+                <LogOut className="w-4.5 h-4.5 text-rose-500" />
+                <span>Sign Out Account</span>
+              </button>
+
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating toast notification */}
       {toastMessage && (

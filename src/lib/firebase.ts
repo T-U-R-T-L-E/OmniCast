@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import { getAuth } from "firebase/auth";
 import { 
   getFirestore, 
   collection, 
@@ -8,25 +9,31 @@ import {
   getDocs, 
   deleteDoc,
   query,
-  orderBy
+  orderBy,
+  where
 } from "firebase/firestore";
 
 // User's provided Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBys0AX9wbbrslGAAMx_bG3AaBAMW2eJKg",
-  authDomain: "omni-cast-2b1d1.firebaseapp.com",
-  projectId: "omni-cast-2b1d1",
-  storageBucket: "omni-cast-2b1d1.firebasestorage.app",
-  messagingSenderId: "369739965631",
-  appId: "1:369739965631:web:d0e9866ef0852c722bd20a",
-  measurementId: "G-FE7KMGKZE1"
+  apiKey: "AIzaSyBpq95dwqygZeggu4ESXiq6KRzvA-Y6mG8",
+  authDomain: "omni-cast-499817.firebaseapp.com",
+  projectId: "omni-cast-499817",
+  storageBucket: "omni-cast-499817.firebasestorage.app",
+  messagingSenderId: "919462078431",
+  appId: "1:919462078431:web:5c32cf912925f970b9466a",
+  measurementId: ""
 };
+
+const databaseId = "ai-studio-b96f539a-a31e-4d4a-ad49-cdf81fc84dbb";
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
+// Initialize Auth
+export const auth = getAuth(app);
+
 // Initialize Firestore
-export const db = getFirestore(app);
+export const db = getFirestore(app, databaseId);
 
 // Initialize Analytics (safely for environments with cookies or SSR restrictions)
 export const analyticsPromise = isSupported().then((supported) => {
@@ -60,10 +67,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: "anonymous_sandbox_user",
-      email: null,
-      emailVerified: false,
-      isAnonymous: true,
+      userId: auth.currentUser?.uid || "anonymous_sandbox_user",
+      email: auth.currentUser?.email || null,
+      emailVerified: auth.currentUser?.emailVerified || false,
+      isAnonymous: auth.currentUser?.isAnonymous || true,
     },
     operationType,
     path
@@ -76,9 +83,12 @@ import { CrossPost } from "../types";
 
 const COLLECTION_NAME = "campaigns";
 
-export async function loadCampaignsFromFirestore(): Promise<CrossPost[]> {
+export async function loadCampaignsFromFirestore(uid: string): Promise<CrossPost[]> {
   try {
-    const q = query(collection(db, COLLECTION_NAME));
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where("ownerId", "==", uid)
+    );
     const querySnapshot = await getDocs(q);
     const result: CrossPost[] = [];
     querySnapshot.forEach((docSnap) => {
@@ -93,8 +103,13 @@ export async function loadCampaignsFromFirestore(): Promise<CrossPost[]> {
 
 export async function saveCampaignToFirestore(campaign: CrossPost): Promise<void> {
   try {
+    const uid = auth.currentUser?.uid;
+    const campaignToSave: CrossPost = {
+      ...campaign,
+      ownerId: campaign.ownerId || uid || "unknown_user"
+    };
     const ref = doc(db, COLLECTION_NAME, campaign.id);
-    await setDoc(ref, campaign);
+    await setDoc(ref, campaignToSave);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${COLLECTION_NAME}/${campaign.id}`);
   }

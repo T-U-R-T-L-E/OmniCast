@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ConnectedAccount } from "../types";
 import { Link2, Link2Off, RefreshCw, CheckCircle2, AlertCircle, Plus, ExternalLink, Info } from "lucide-react";
+import { PlatformLinkModal } from "./PlatformLinkModal";
 
 interface ConnectedAccountsProps {
   accounts: ConnectedAccount[];
@@ -18,6 +19,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
   const [tempUsername, setTempUsername] = useState("");
   const [revokingPlatforms, setRevokingPlatforms] = useState<Record<string, boolean>>({});
+  const [linkingPlatform, setLinkingPlatform] = useState<ConnectedAccount | null>(null);
 
   const handleRevokeClick = async (platform: string, id: string) => {
     setRevokingPlatforms((prev) => ({ ...prev, [id]: true }));
@@ -205,7 +207,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
                     <button
                       id={`connect-toggle-${acc.id}`}
                       type="button"
-                      onClick={() => onToggleConnect(acc.id)}
+                      onClick={() => setLinkingPlatform(acc)}
                       className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-extrabold tracking-wider bg-blue-50 hover:bg-blue-600 border border-blue-200 text-blue-600 hover:text-white rounded-lg transition-all hover:scale-105 active:scale-95 cursor-pointer leading-none font-sans"
                       title="Link and authorize account via OAuth protocol"
                     >
@@ -308,6 +310,19 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           </div>
         </div>
       </div>
+
+      {linkingPlatform && (
+        <PlatformLinkModal
+          isOpen={!!linkingPlatform}
+          onClose={() => setLinkingPlatform(null)}
+          platformId={linkingPlatform.id}
+          platformName={linkingPlatform.platform}
+          onCompleteLink={(id, username) => {
+            onUpdateUsername(id, username);
+            onToggleConnect(id);
+          }}
+        />
+      )}
     </div>
   );
 };

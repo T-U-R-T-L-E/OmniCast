@@ -30,6 +30,7 @@ export interface OptimizedResult {
 
 export interface CrossPost {
   id: string;
+  ownerId?: string;
   title: string;
   description: string;
   hashtags: string;
@@ -92,5 +93,22 @@ export interface MediaLibraryItem {
   thumbnail: string;
   type: "video" | "image";
   duration?: number;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  plan: string;
+  createdAt: string;
+  linkedPlatformsCount: number;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key: string;
+  createdAt: string;
+  lastUsed: string;
+  status: "active" | "revoked";
 }
 
