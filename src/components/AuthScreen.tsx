@@ -526,6 +526,12 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                     <span>Apple</span>
                   </button>
                 </div>
+                <p className="text-[10px] text-slate-450 font-semibold text-center mt-2 leading-relaxed max-w-xs mx-auto">
+                  By choosing to sign up or log in with Google or Apple, you agree and consent to our{" "}
+                  <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Privacy Policy</a>.
+                </p>
               </div>
 
               {/* Registration Redirection */}
@@ -728,6 +734,12 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                     <span>Apple</span>
                   </button>
                 </div>
+                <p className="text-[10px] text-slate-450 font-semibold text-center mt-2 leading-relaxed max-w-xs mx-auto">
+                  By choosing to sign up or log in with Google or Apple, you agree and consent to our{" "}
+                  <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Privacy Policy</a>.
+                </p>
               </div>
 
               {/* Redirection to signin */}
@@ -968,21 +980,23 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
         <div className="mt-6 flex items-center justify-center space-x-3 text-[11px] text-slate-400 font-semibold select-none">
           <span className="font-black text-slate-600 tracking-wider">OmniCast</span>
           <span>•</span>
-          <button
-            type="button"
-            onClick={() => setAuthModalView("terms")}
+          <a
+            href="/terms-of-service"
+            target="_blank"
+            rel="noopener noreferrer"
             className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline"
           >
             Terms of Service
-          </button>
+          </a>
           <span>•</span>
-          <button
-            type="button"
-            onClick={() => setAuthModalView("privacy")}
+          <a
+            href="/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
             className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline"
           >
             Privacy Policy
-          </button>
+          </a>
         </div>
       </div>
 
