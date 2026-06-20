@@ -130,6 +130,41 @@ const DEFAULT_ACCOUNTS: ConnectedAccount[] = [
   }
 ];
 
+const EMPTY_ACCOUNTS: ConnectedAccount[] = [
+  {
+    id: "acc-tiktok",
+    platform: "tiktok",
+    username: "",
+    avatarUrl: "",
+    connected: false,
+    status: "not_connected"
+  },
+  {
+    id: "acc-instagram",
+    platform: "instagram",
+    username: "",
+    avatarUrl: "",
+    connected: false,
+    status: "not_connected"
+  },
+  {
+    id: "acc-facebook",
+    platform: "facebook",
+    username: "",
+    avatarUrl: "",
+    connected: false,
+    status: "not_connected"
+  },
+  {
+    id: "acc-youtube",
+    platform: "youtube_shorts",
+    username: "",
+    avatarUrl: "",
+    connected: false,
+    status: "not_connected"
+  }
+];
+
 export default function App() {
   // Config & state
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(true);
@@ -555,7 +590,7 @@ export default function App() {
   const [campaigns, setCampaigns] = useState<CrossPost[]>([]);
 
   // Navigation & Multi-page workspace layout
-  const [activePage, setActivePage] = useState<"users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history">("users");
+  const [activePage, setActivePage] = useState<"users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history" | "privacy" | "terms">("users");
   const [uploadStep, setUploadStep] = useState<1 | 2 | 3>(1);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [docsTabOverride, setDocsTabOverride] = useState<"guides" | "helpdesk" | "review" | undefined>(undefined);
@@ -634,7 +669,85 @@ export default function App() {
         setHasGeminiKey(data.hasGeminiKey);
       })
       .catch(e => console.error("Could not fetch Server API configuration:", e));
+
   }, []);
+
+  // Client-side mapping of standard URLs to page states
+  const ROUTE_MAP: Record<string, "users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history" | "privacy" | "terms"> = {
+    "/users": "users",
+    "/user": "users",
+    "/apikeys": "apikeys",
+    "/api-keys": "apikeys",
+    "/upload": "upload",
+    "/calendar": "calendar",
+    "/analytics": "analytics",
+    "/pricing": "pricing",
+    "/docs": "docs",
+    "/profile": "profile",
+    "/queue": "queue_settings",
+    "/queue_settings": "queue_settings",
+    "/queue-settings": "queue_settings",
+    "/invoices": "invoices",
+    "/connected-apps": "connected_apps",
+    "/connected_apps": "connected_apps",
+    "/team": "team_management",
+    "/team_management": "team_management",
+    "/team-management": "team_management",
+    "/history": "history",
+    "/privacy": "privacy",
+    "/privacy-policy": "privacy",
+    "/terms": "terms",
+    "/terms-of-service": "terms"
+  };
+
+  const PAGE_TO_PATH: Record<string, string> = {
+    "users": "/user",
+    "apikeys": "/apikeys",
+    "upload": "/upload",
+    "calendar": "/calendar",
+    "analytics": "/analytics",
+    "pricing": "/pricing",
+    "docs": "/docs",
+    "profile": "/profile",
+    "queue_settings": "/queue",
+    "invoices": "/invoices",
+    "connected_apps": "/connected-apps",
+    "team_management": "/team",
+    "history": "/history",
+    "privacy": "/privacy-policy",
+    "terms": "/terms-of-service"
+  };
+
+  // Initial routing check & Popstate event listener for browser alignment
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname;
+      if (ROUTE_MAP[path]) {
+        setActivePage(ROUTE_MAP[path]);
+      } else if (path !== "/") {
+        // Fallback default
+        setActivePage("users");
+      }
+    };
+
+    handleLocationChange();
+
+    window.addEventListener("popstate", handleLocationChange);
+    return () => {
+      window.removeEventListener("popstate", handleLocationChange);
+    };
+  }, []);
+
+  // Update high-quality clean URLs whenever activePage shifts inside the web app
+  useEffect(() => {
+    const path = window.location.pathname;
+    const targetPath = PAGE_TO_PATH[activePage];
+    if (targetPath && path !== targetPath) {
+      window.history.pushState(null, "", targetPath);
+    } else if (!targetPath && path !== "/") {
+      window.history.pushState(null, "", "/");
+    }
+  }, [activePage]);
 
   // Load campaigns user-specific history when authedUser becomes active
   useEffect(() => {
@@ -698,7 +811,8 @@ export default function App() {
       if (storedAcc) {
         setAccounts(JSON.parse(storedAcc));
       } else {
-        setAccounts(DEFAULT_ACCOUNTS);
+        // A newly created/registered user begins with absolutely no platforms connected!
+        setAccounts(EMPTY_ACCOUNTS);
       }
     } catch (e) {
       console.error("LocalStorage load accounts error:", e);
@@ -781,26 +895,51 @@ export default function App() {
           token: platform === "youtube_shorts" ? "youtube_sec_token_99a" : "meta-user-acc-token-42c"
         })
       });
-      const data = await response.json();
-      if (data.success) {
-        // Disconnect account
-        saveAccounts(prev => prev.map(a => {
-          if (a.id === platformId) {
-            return { ...a, connected: false, status: "not_connected" };
+      
+      let success = false;
+      let errorMsg = "";
+      
+      if (response.ok) {
+        try {
+          const data = await response.json();
+          success = !!data.success;
+          errorMsg = data.error || "Revocation failed";
+          
+          if (success) {
+            console.log(`[Local Sync]: Revoked tokens cleanly on ${platform}:`, data.logs);
           }
-          return a;
-        }));
-        
-        // Log details to user or developer logs
-        console.log(`[Local Sync]: Revoked tokens cleanly on ${platform}:`, data.logs);
+        } catch (jsonErr) {
+          success = false;
+          errorMsg = "API responded with non-JSON format (possibly server 404 or index HTML fallback)";
+        }
+      } else {
+        errorMsg = `Server responded with status ${response.status}`;
+      }
+
+      // We ALWAYS disconnect the account locally even if server-side OAuth revoking isn't operational,
+      // assuring the user is never locked or blocked on static-only hosting.
+      saveAccounts(prev => prev.map(a => {
+        if (a.id === platformId) {
+          return { ...a, connected: false, status: "not_connected" };
+        }
+        return a;
+      }));
+
+      if (success) {
         triggerToast(`OAuth Authorization Securely Revoked on ${platform.replace("_shorts", "").toUpperCase()}!`);
       } else {
-        throw new Error(data.error || "Revocation failed");
+        console.warn(`[OAuth Revoke Offline Fallback]: ${errorMsg}. Disconnected local session states instead.`);
+        triggerToast(`Platform disconnected from session locally.`);
       }
     } catch (err: any) {
-      console.error(err);
-      triggerToast(`Friction revoking token: ${err.message || String(err)}`);
-      throw err;
+      console.warn("[OAuth Revoke Network Fallback]: Server offline/failure. Severing connection locally.", err);
+      saveAccounts(prev => prev.map(a => {
+        if (a.id === platformId) {
+          return { ...a, connected: false, status: "not_connected" };
+        }
+        return a;
+      }));
+      triggerToast(`Platform disconnected locally.`);
     }
   };
 
@@ -2092,6 +2231,7 @@ export default function App() {
             <UserManagement 
               accounts={accounts}
               onAddToast={triggerToast}
+              userId={authedUser?.uid}
             />
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7">

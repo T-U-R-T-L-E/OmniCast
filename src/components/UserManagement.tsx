@@ -26,6 +26,7 @@ interface UserManagementProps {
   profiles?: UserProfile[];
   onSaveProfile?: (profile: UserProfile) => void;
   onDeleteProfile?: (id: string) => void;
+  userId?: string;
 }
 
 export function UserManagement({ 
@@ -33,7 +34,8 @@ export function UserManagement({
   onAddToast,
   profiles: externalProfiles,
   onSaveProfile,
-  onDeleteProfile
+  onDeleteProfile,
+  userId
 }: UserManagementProps) {
   // Local list of profiles
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
@@ -47,7 +49,8 @@ export function UserManagement({
     if (externalProfiles && externalProfiles.length > 0) {
       setProfiles(externalProfiles);
     } else {
-      const saved = localStorage.getItem("uploadpost_user_profiles");
+      const storageKey = userId ? `uploadpost_user_profiles_${userId}` : "uploadpost_user_profiles";
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
           setProfiles(JSON.parse(saved));
@@ -55,26 +58,33 @@ export function UserManagement({
           console.error("Failed to parse user profiles", e);
         }
       } else {
-        // Seed default profile so the view looks pristine yet has data
-        const defaultProfiles: UserProfile[] = [
-          {
-            id: "prof_master_workspace",
-            name: "master_workspace",
-            plan: "Free",
-            createdAt: new Date().toLocaleDateString(),
-            linkedPlatformsCount: accounts.filter(a => a.connected).length || 2
-          }
-        ];
-        setProfiles(defaultProfiles);
-        localStorage.setItem("uploadpost_user_profiles", JSON.stringify(defaultProfiles));
+        if (userId) {
+          // New authenticated user starts with absolutely no profile created yet!
+          setProfiles([]);
+          localStorage.setItem(storageKey, JSON.stringify([]));
+        } else {
+          // Seed default profile so the view looks pristine yet has data for guest demo
+          const defaultProfiles: UserProfile[] = [
+            {
+              id: "prof_master_workspace",
+              name: "master_workspace",
+              plan: "Free",
+              createdAt: new Date().toLocaleDateString(),
+              linkedPlatformsCount: accounts.filter(a => a.connected).length || 2
+            }
+          ];
+          setProfiles(defaultProfiles);
+          localStorage.setItem(storageKey, JSON.stringify(defaultProfiles));
+        }
       }
     }
-  }, [externalProfiles, accounts]);
+  }, [externalProfiles, accounts, userId]);
 
   // Sync back to local storage and external whenever local profiles change
   const syncProfiles = (updated: UserProfile[]) => {
     setProfiles(updated);
-    localStorage.setItem("uploadpost_user_profiles", JSON.stringify(updated));
+    const storageKey = userId ? `uploadpost_user_profiles_${userId}` : "uploadpost_user_profiles";
+    localStorage.setItem(storageKey, JSON.stringify(updated));
     localStorage.setItem("onboarding_profile_name", updated[0]?.name || "master_workspace");
     localStorage.setItem("onboarding_profile_created", updated.length > 0 ? "true" : "false");
   };
