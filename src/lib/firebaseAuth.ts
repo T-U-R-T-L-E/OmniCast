@@ -9,7 +9,8 @@ import {
   linkWithCredential, 
   EmailAuthProvider,
   User,
-  signOut
+  signOut,
+  updateProfile
 } from "firebase/auth";
 import { auth } from "./firebase";
 
@@ -42,13 +43,20 @@ export function translateAuthError(code: string): string {
 /**
  * Register a user with Email/Password, trigger verification, and return the user.
  */
-export async function signUpWithEmail(email: string, password: string): Promise<User> {
+export async function signUpWithEmail(email: string, password: string, displayName?: string): Promise<User> {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  // Send email verification immediately
-  if (userCredential.user) {
-    await sendEmailVerification(userCredential.user);
+  const user = userCredential.user;
+  if (user) {
+    if (displayName) {
+      try {
+        await updateProfile(user, { displayName });
+      } catch (profileErr) {
+        console.error("Failed to set displayName during signup:", profileErr);
+      }
+    }
+    await sendEmailVerification(user);
   }
-  return userCredential.user;
+  return user;
 }
 
 /**

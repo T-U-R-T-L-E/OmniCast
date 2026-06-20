@@ -50,6 +50,7 @@ import {
   LogOut,
   Bell,
   Moon,
+  Sun,
   ChevronDown,
   CreditCard,
   HelpCircle,
@@ -88,6 +89,9 @@ import {
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { isUserEmailVerified, isPasswordLinkingRequired, logOutUser } from "./lib/firebaseAuth";
 import { AuthScreen } from "./components/AuthScreen";
+import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { TermsOfServicePage } from "./components/TermsOfServicePage";
+import { NotificationsPage } from "./components/NotificationsPage";
 import { useAutoSaveDraft } from "./hooks/useAutoSave";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -595,6 +599,15 @@ export default function App() {
     youtube_shorts: false
   });
   const [hasPublishingFailed, setHasPublishingFailed] = useState<boolean>(false);
+
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem("omnicast_dark") === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("omnicast_dark", darkMode ? "true" : "false");
+    document.body.classList.toggle("dark", darkMode);
+  }, [darkMode]);
 
   // Toast notifier
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1750,21 +1763,36 @@ export default function App() {
               {/* Notification icon */}
               <button 
                 type="button" 
-                onClick={() => triggerToast("You have no unread notifications")}
-                className="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                onClick={() => {
+                  setActivePage("notifications");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer relative ${
+                  activePage === "notifications" 
+                    ? "text-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-50/30" 
+                    : "text-slate-500 hover:text-indigo-600 hover:bg-slate-100"
+                }`}
                 title="Notifications"
               >
                 <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-indigo-600 rounded-full ring-2 ring-white animate-pulse" />
               </button>
 
               {/* Theme toggle icon */}
               <button 
                 type="button" 
-                onClick={() => triggerToast("Theme toggle: Visual style is set to modern premium light")}
+                onClick={() => {
+                  setDarkMode(!darkMode);
+                  triggerToast(`Theme switched to ${!darkMode ? "Cosmic Dark" : "Premium Light"} mode`);
+                }}
                 className="p-1.5 sm:p-2 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
-                title="Dark Mode toggle"
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
               >
-                <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                {darkMode ? (
+                  <Sun className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-500 animate-pulse-slow" />
+                ) : (
+                  <Moon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                )}
               </button>
 
               {/* Profile dropdown icon */}
@@ -1916,37 +1944,11 @@ export default function App() {
               </div>
             </div>
           )}
-
-          <button
-            onClick={handlePublishAll}
-            disabled={isPublishing || (!videoFile && Object.keys(platformAttachments).length === 0)}
-            className={`px-3 sm:px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 cursor-pointer shadow-sm ${
-              (!videoFile && Object.keys(platformAttachments).length === 0)
-                ? "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed"
-                : isPublishing
-                ? "bg-slate-100 text-slate-500 border border-slate-200"
-                : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
-            }`}
-          >
-            {isPublishing ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span className="hidden sm:inline">Broadcasting...</span>
-                <span className="sm:hidden">Broadcasting</span>
-              </>
-            ) : (
-              <>
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Distribute All</span>
-                <span className="sm:hidden">Distribute</span>
-              </>
-            )}
-          </button>
         </div>
       </header>
 
       {/* Primary Tab Navigation */}
-      <div className="bg-white border-b border-slate-200 sticky top-16 z-30 shadow-2xs">
+      <div className="hidden lg:block bg-white border-b border-slate-200 sticky top-16 z-30 shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-6 overflow-x-auto py-1 scrollbar-none select-none">
             <button
@@ -2238,6 +2240,30 @@ export default function App() {
               onBackToProfile={() => setActivePage("profile")}
               campaigns={campaigns}
             />
+          </div>
+        ) : activePage === "notifications" ? (
+          <div className="lg:col-span-12">
+            <NotificationsPage 
+              onBack={() => {
+                setActivePage("upload");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onSave={() => triggerToast("Preferences updated successfully")}
+            />
+          </div>
+        ) : activePage === "privacy" ? (
+          <div className="lg:col-span-12 text-left">
+            <PrivacyPolicyPage onBack={() => {
+              setActivePage("upload");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }} />
+          </div>
+        ) : activePage === "terms" ? (
+          <div className="lg:col-span-12 text-left">
+            <TermsOfServicePage onBack={() => {
+              setActivePage("upload");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }} />
           </div>
         ) : (
           <>
@@ -4832,7 +4858,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
               )}
 
               {/* Action utilities bar under previews */}
-              <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-5 pt-3.5 border-t border-slate-105">
                 <button
                   type="button"
                   onClick={() => {
@@ -4844,14 +4870,31 @@ META_APP_SECRET=your_meta_app_secret_here`}
                     else if (activePlatformPreview === "bulk_edit") targetText = `${bulkTitle}\n\n${bulkDescription}\n\n${bulkHashtags}`;
                     handleCopyText(targetText);
                   }}
-                  className="px-3.5 py-2 text-xs font-bold border border-slate-200 hover:border-slate-300 rounded-lg hover:bg-slate-50 transition-all text-slate-600 flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 text-xs font-bold border border-slate-200 hover:border-slate-300 rounded-lg hover:bg-slate-50 transition-all text-slate-600 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   Copy Platform Text
                 </button>
 
-                <div className="text-[10px] text-slate-400 font-mono">
-                  Channels linked: {accounts.filter(a => a.connected).length} active
+                <div className="flex items-center justify-between sm:justify-end gap-3">
+                  <div className="text-[10px] text-slate-400 font-mono font-bold">
+                    {accounts.filter(a => a.connected).length} linked
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePublishAll}
+                    disabled={isPublishing || (!videoFile && Object.keys(platformAttachments).length === 0)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                      (!videoFile && Object.keys(platformAttachments).length === 0)
+                        ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                        : isPublishing
+                        ? "bg-slate-50 text-slate-400 border border-slate-200"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95"
+                    }`}
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>Distribute Clips</span>
+                  </button>
                 </div>
               </div>
 
@@ -5251,7 +5294,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
       )}
 
       {/* Historic Campaigns Drawer Section */}
-      <footer className="bg-white border-t border-slate-200/90 py-8 px-6 lg:px-8">
+      <footer className="bg-white border-t border-slate-200/90 pt-8 pb-28 px-6 lg:px-8 lg:pb-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {activePage === "content" && (
             <>
@@ -5359,10 +5402,10 @@ META_APP_SECRET=your_meta_app_secret_here`}
             <div className="space-y-2.5">
               <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Product</h5>
               <ul className="space-y-1.5 font-medium">
-                <li><button type="button" onClick={() => { setActivePage("upload"); setUploadStep(1); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Dashboard</button></li>
-                <li><button type="button" onClick={() => { setActivePage("users"); triggerToast("Managing custom upload profiles"); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Manage Profiles</button></li>
-                <li><button type="button" onClick={() => setActivePage("pricing")} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Pricing</button></li>
-                <li><button type="button" onClick={() => { setActivePage("profile"); triggerToast("Viewing subscription & billing details"); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Billing & Usage</button></li>
+                <li><button type="button" onClick={() => { setActivePage("upload"); setUploadStep(1); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Dashboard</button></li>
+                <li><button type="button" onClick={() => { setActivePage("users"); triggerToast("Managing custom upload profiles"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Manage Profiles</button></li>
+                <li><button type="button" onClick={() => { setActivePage("pricing"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Pricing</button></li>
+                <li><button type="button" onClick={() => { setActivePage("profile"); triggerToast("Viewing subscription & billing details"); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Billing & Usage</button></li>
               </ul>
             </div>
 
@@ -5370,8 +5413,8 @@ META_APP_SECRET=your_meta_app_secret_here`}
             <div className="space-y-2.5">
               <h5 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Resources</h5>
               <ul className="space-y-1.5 font-medium">
-                <li><button type="button" onClick={() => { setActivePage("apikeys"); triggerToast("Opening API Keys..."); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">API & Integrations</button></li>
-                <li><button type="button" onClick={() => { setDocsTabOverride("guides"); setActivePage("docs"); triggerToast("Opening Documentation..."); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Documentation</button></li>
+                <li><button type="button" onClick={() => { setActivePage("apikeys"); triggerToast("Opening API Keys..."); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">API & Integrations</button></li>
+                <li><button type="button" onClick={() => { setDocsTabOverride("guides"); setActivePage("docs"); triggerToast("Opening Documentation..."); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="hover:text-indigo-600 transition-colors cursor-pointer text-left">Documentation</button></li>
               </ul>
             </div>
 
@@ -5386,6 +5429,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                       setDocsTabOverride("helpdesk");
                       setActivePage("docs"); 
                       triggerToast("Opening Help Center in Docs Desk..."); 
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }} 
                     className="hover:text-indigo-600 transition-colors cursor-pointer text-left"
                   >
@@ -5399,6 +5443,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                       setDocsTabOverride("review");
                       setActivePage("docs"); 
                       triggerToast("Opening Reviews Feed in Docs Desk..."); 
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }} 
                     className="hover:text-indigo-600 transition-colors cursor-pointer text-left"
                   >
@@ -5419,13 +5464,25 @@ META_APP_SECRET=your_meta_app_secret_here`}
               <span>© {new Date().getFullYear()} OmniCast. All rights reserved.</span>
             </div>
             <div className="flex items-center space-x-4 animate-pulse-slow">
-              <a href="#terms-of-service" onClick={(e) => e.preventDefault()} className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+              <button 
+                onClick={() => {
+                  setActivePage("terms");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }} 
+                className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+              >
                 Terms of Service
-              </a>
+              </button>
               <span>•</span>
-              <a href="#privacy-policy" onClick={(e) => e.preventDefault()} className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+              <button 
+                onClick={() => {
+                  setActivePage("privacy");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }} 
+                className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+              >
                 Privacy Policy
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -5768,6 +5825,33 @@ META_APP_SECRET=your_meta_app_secret_here`}
                   </div>
                 </button>
 
+              </div>
+
+              {/* Mobile Legal Links */}
+              <div className="flex items-center justify-center gap-5 text-xs font-bold text-slate-400 mb-5 relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("terms");
+                    setIsMobileMoreOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="hover:text-indigo-600 hover:underline transition-all cursor-pointer text-[11px]"
+                >
+                  Terms of Service
+                </button>
+                <span className="text-slate-300 pointer-events-none">•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("privacy");
+                    setIsMobileMoreOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="hover:text-indigo-600 hover:underline transition-all cursor-pointer text-[11px]"
+                >
+                  Privacy Policy
+                </button>
               </div>
 
               {/* Sign out */}

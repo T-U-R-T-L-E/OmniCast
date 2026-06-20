@@ -41,7 +41,8 @@ import {
   AlertCircle,
   LogOut,
   HelpCircle,
-  Award
+  Award,
+  User as UserIcon
 } from "lucide-react";
 
 interface AuthScreenProps {
@@ -54,6 +55,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
   const [mode, setMode] = useState<"signin" | "signup" | "forgot" | "verify" | "linking">("signin");
   
   // Form input fields
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -67,7 +69,10 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
   // Verification resend countdown
   const [countdown, setCountdown] = useState(0);
   
-  // Tracking active Firebase User
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [authModalView, setAuthModalView] = useState<"none" | "terms" | "privacy">("none");
+
+  // Track active Firebase User
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -174,6 +179,12 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
     setErrorMsg(null);
     
     // Quick validation
+    if (!agreeToTerms) {
+      setErrorMsg("You must agree to the Terms of Service and Privacy Policy to create an account.");
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setErrorMsg("Passwords do not match. Please verify the confirm password field.");
       setIsLoading(false);
@@ -187,7 +198,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
     }
     
     try {
-      await signUpWithEmail(email, password);
+      await signUpWithEmail(email, password, fullName);
       onAddToast("🚀 Account pre-created! Verification email sent.");
       setMode("verify");
     } catch (err: any) {
@@ -543,6 +554,21 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
               {/* Sign Up Form */}
               <form onSubmit={handleSignUpSubmit} className="space-y-4">
                 <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Full Name</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Alex Carter"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none transition-all text-slate-805"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -618,10 +644,44 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                   </div>
                 </div>
 
+                {/* Secure Terms & Privacy Agreement Checkbox */}
+                <div className="flex items-start gap-2.5 mt-3 select-none">
+                  <input
+                    type="checkbox"
+                    id="agreeToTerms"
+                    checked={agreeToTerms}
+                    onChange={(e) => setAgreeToTerms(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4.5 h-4.5 accent-indigo-600 shrink-0"
+                  />
+                  <label htmlFor="agreeToTerms" className="text-[11px] text-slate-500 font-semibold leading-normal cursor-pointer">
+                    I verify and agree to the{" "}
+                    <button 
+                      type="button" 
+                      onClick={() => setAuthModalView("terms")}
+                      className="text-indigo-600 hover:text-indigo-800 font-extrabold hover:underline"
+                    >
+                      Terms of Service
+                    </button>{" "}
+                    and{" "}
+                    <button 
+                      type="button" 
+                      onClick={() => setAuthModalView("privacy")}
+                      className="text-indigo-600 hover:text-indigo-800 font-extrabold hover:underline"
+                    >
+                      Privacy Policy
+                    </button>
+                    .
+                  </label>
+                </div>
+
                 <button 
                   type="submit" 
-                  disabled={isLoading}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors uppercase tracking-wider inline-flex items-center justify-center gap-2 mt-2"
+                  disabled={isLoading || !agreeToTerms}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2 ${
+                    !agreeToTerms
+                      ? "bg-slate-100 text-slate-400 border border-slate-200/60 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95"
+                  }`}
                 >
                   {isLoading ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -903,7 +963,105 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
           )}
 
         </motion.div>
+
+        {/* Footer containing Terms & Privacy links with direct trigger view */}
+        <div className="mt-6 flex items-center justify-center space-x-3 text-[11px] text-slate-400 font-semibold select-none">
+          <span className="font-black text-slate-600 tracking-wider">OmniCast</span>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => setAuthModalView("terms")}
+            className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline"
+          >
+            Terms of Service
+          </button>
+          <span>•</span>
+          <button
+            type="button"
+            onClick={() => setAuthModalView("privacy")}
+            className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline"
+          >
+            Privacy Policy
+          </button>
+        </div>
       </div>
+
+      {/* Floating Legal Screens overlay during signup process */}
+      <AnimatePresence>
+        {authModalView !== "none" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-[4px] z-55 flex items-center justify-center p-4"
+            onClick={() => setAuthModalView("none")}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200/60 p-6 max-h-[80vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                <h3 className="font-extrabold text-slate-800 text-xs tracking-widest uppercase">
+                  {authModalView === "terms" ? "Terms of Service" : "Privacy Policy"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAuthModalView("none")}
+                  className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* Scrollable text */}
+              <div className="flex-1 overflow-y-auto py-4 text-xs text-slate-600 space-y-3 leading-relaxed pr-1 select-text">
+                {authModalView === "terms" ? (
+                  <>
+                    <p className="font-bold text-slate-800">1. Acceptance of Terms</p>
+                    <p>By creating an account on OmniCast, you acknowledge you have read, grasped, and verified compliance with our services guidelines.</p>
+                    <p className="font-bold text-slate-800">2. Platform Dispatch Compliance</p>
+                    <p>OmniCast acts as a cross-posting workflow hub. Users are solely responsible for compliance with specific platform policies (including YouTube Shorts, TikTok, Instagram, and Facebook terms of service). Any violation of third-party guidelines may lead to account de-authorization.</p>
+                    <p className="font-bold text-slate-800">3. Fair & Proper Usage</p>
+                    <p>All automated tasks must use authorized endpoint tokens. Spamming, bulk duplication of copyrighted assets, or routing of malware vectors is strictly forbidden and results in instant, permanent account ban.</p>
+                    <p className="font-bold text-slate-800">4. Modifications & Services</p>
+                    <p>We reserve absolute rights to optimize, adjust, or suspend features of OmniCast to preserve system integrity or comply with social network adjustments.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold text-slate-800">1. Information We Collect</p>
+                    <p>We receive database entries with your email address securely persisted via Google Firebase Authentication. For dispatch functionalities, social profile tokens are cached safely inside secure local client-side memory blocks.</p>
+                    <p className="font-bold text-slate-800">2. Asset Retention and Safety</p>
+                    <p>Media files uploaded to OmniCast (e.g. MP4 clips) are processed safely and routed securely to selected platform endpoints. We do not sell or lease any user assets to telemetry brokers or marketing organizations.</p>
+                    <p className="font-bold text-slate-800">3. Cookie Configuration</p>
+                    <p>We use essential local state records to keep authenticated creators connected without displaying repeated password verification modals.</p>
+                    <p className="font-bold text-slate-800">4. Security Standards</p>
+                    <p>Credentials, databases, and configuration settings are guarded by industry standard Firebase SSL handshakes.</p>
+                  </>
+                )}
+              </div>
+
+              {/* Footer CTA */}
+              <div className="pt-3 border-t border-slate-100 shrink-0 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAgreeToTerms(true);
+                    setAuthModalView("none");
+                  }}
+                  className="px-5 py-2 bg-indigo-650 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  I Agree & Accept
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   </AnimatePresence>
   );
