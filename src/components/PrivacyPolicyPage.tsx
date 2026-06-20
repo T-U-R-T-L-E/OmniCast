@@ -34,7 +34,7 @@ export function PrivacyPolicyPage({ onBack }: PrivacyPolicyPageProps) {
         </div>
 
         <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-          At OmniCast, we construct modern software solutions ensuring that your privacy profile is guarded with complete integrity. This policy clarifies exactly what records are used, stored, or transited during standard dispatch activity.
+          At Omni-Cast, we construct modern software solutions ensuring that your privacy profile is guarded with complete integrity. This policy clarifies exactly what records are used, stored, or transited during standard dispatch activity.
         </p>
 
         <hr className="border-slate-100" />
@@ -56,7 +56,7 @@ export function PrivacyPolicyPage({ onBack }: PrivacyPolicyPageProps) {
               <span className="text-indigo-600 text-[10px]">02 //</span> Asset Security & Media Records Transit Routing
             </h3>
             <p className="text-xs text-slate-555 leading-relaxed font-semibold pl-5">
-              Media files (such as MP4 video sequences) uploaded by creators are utilized solely for formatting and routing to client-authorized API channels. OmniCast maintains a strict zero-retention strategy: once files successfully reach your destination profiles, they are purged from temporary transit lines.
+              Media files (such as MP4 video sequences) uploaded by creators are utilized solely for formatting and routing to client-authorized API channels. Omni-Cast maintains a strict zero-retention strategy: once files successfully reach your destination profiles, they are purged from temporary transit lines.
             </p>
           </div>
 
@@ -73,7 +73,7 @@ export function PrivacyPolicyPage({ onBack }: PrivacyPolicyPageProps) {
           {/* Core Guarantees Box */}
           <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 space-y-3">
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-              OmniCast Trusted Shield Parameters
+              Omni-Cast Trusted Shield Parameters
             </span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <div className="flex gap-2 text-xs font-semibold text-slate-700">

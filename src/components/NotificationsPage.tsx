@@ -75,7 +75,7 @@ export function NotificationsPage({ onBack, onSave }: NotificationsPageProps) {
         timestamp: new Date().toISOString(),
         payload_delivered: {
           event: "clip.published_successfully",
-          provider: "OmniCast Central Dispatch",
+          provider: "Omni-Cast Central Dispatch",
           user: "lewisiraki1@gmail.com",
           channels_broadcasted: ["TikTok", "Instagram Reels", "YouTube Shorts"],
           metadata: {
@@ -164,14 +164,14 @@ export function NotificationsPage({ onBack, onSave }: NotificationsPageProps) {
                   <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Telegram Bot Username / Chat ID</label>
                   <input
                     type="text"
-                    placeholder="@omnicast_dispatch_bot or enter chat identifier"
+                    placeholder="@omni_cast_dispatch_bot or enter chat identifier"
                     value={telegramUsername}
                     onChange={(e) => setTelegramUsername(e.target.value)}
                     className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 rounded-lg text-[11px] font-semibold text-slate-800 transition-all focus:outline-none"
                   />
                   <div className="flex items-center gap-1.5 mt-1.5 text-[9px] text-[#0369A1] font-semibold">
                     <AlertCircle className="w-3 h-3 text-[#0284C7]" />
-                    <span>Send /start to the official OmniCast Telegram Bot first to pair.</span>
+                    <span>Send /start to the official Omni-Cast Telegram Bot first to pair.</span>
                   </div>
                 </div>
               )}

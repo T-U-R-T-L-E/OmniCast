@@ -105,7 +105,7 @@ export function ProfileView({
             </div>
           </div>
           <p className="text-xs text-slate-500 leading-relaxed max-w-2xl">
-            Welcome to your profile page on <strong className="text-slate-800">upload-post</strong>. View your account details and manage your subscription. We use <span className="text-indigo-600 font-bold">Stripe</span>, the global leader in online payments, for secure subscription and payment management.
+            Welcome to your profile page on <strong className="text-slate-800">Omni-Cast</strong>. View your account details and manage your subscription. We use <span className="text-indigo-600 font-bold">Stripe</span>, the global leader in online payments, for secure subscription and payment management.
           </p>
         </div>
       </div>
@@ -306,7 +306,7 @@ export function ProfileView({
           <div className="space-y-1">
             <h3 className="text-sm font-black text-slate-800 tracking-wide">Leave a review</h3>
             <p className="text-xs text-slate-450">
-              Share your experience and help us improve upload-post.
+              Share your experience and help us improve Omni-Cast.
             </p>
           </div>
         </div>

@@ -34,7 +34,7 @@ export function TermsOfServicePage({ onBack }: TermsOfServicePageProps) {
         </div>
 
         <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-          These Terms of Service outline the legal rules and proper parameters governing your use of the OmniCast cross-posting desk dashboard. Read each section prior to deploying API connections.
+          These Terms of Service outline the legal rules and proper parameters governing your use of the Omni-Cast cross-posting desk dashboard. Read each section prior to deploying API connections.
         </p>
 
         <hr className="border-slate-100" />
@@ -46,7 +46,7 @@ export function TermsOfServicePage({ onBack }: TermsOfServicePageProps) {
               <span className="text-indigo-600 text-[10px]">ARTICLE I //</span> Account Integrity & Verification Safeguards
             </h3>
             <p className="text-xs text-slate-555 leading-relaxed font-semibold pl-5">
-              Creator accounts on OmniCast must correspond to genuine emails or social identity handles. Maintaining active credential safety, safeguard secrets blocks, and preventing split or duplicate account fraud rests purely on your administration.
+              Creator accounts on Omni-Cast must correspond to genuine emails or social identity handles. Maintaining active credential safety, safeguard secrets blocks, and preventing split or duplicate account fraud rests purely on your administration.
             </p>
           </div>
 
@@ -56,7 +56,7 @@ export function TermsOfServicePage({ onBack }: TermsOfServicePageProps) {
               <span className="text-indigo-600 text-[10px]">ARTICLE II //</span> Dispatch Volume Guidelines & Anti-Abuse
             </h3>
             <p className="text-xs text-slate-555 leading-relaxed font-semibold pl-5">
-              Our automated cross-platform APIs are subject to system rate-limits. Flooding social channels with repetitive, duplicated, copyrighted, or malicious sequences is strictly forbidden. OmniCast holds absolute power to instantly terminate tokens in violation.
+              Our automated cross-platform APIs are subject to system rate-limits. Flooding social channels with repetitive, duplicated, copyrighted, or malicious sequences is strictly forbidden. Omni-Cast holds absolute power to instantly terminate tokens in violation.
             </p>
           </div>
 
@@ -66,7 +66,7 @@ export function TermsOfServicePage({ onBack }: TermsOfServicePageProps) {
               <span className="text-indigo-600 text-[10px]">ARTICLE III //</span> Third-Party Social Network Compliance
             </h3>
             <p className="text-xs text-slate-555 leading-relaxed font-semibold pl-15">
-              By distributing videos, you swear full alignment with <em>Official Developer Guidelines</em> for Google YouTube Shorts, ByteDance TikTok API, and Meta Instagram/Facebook services platforms. If a social channel revokes access due to account misconduct, OmniCast is not liable.
+              By distributing videos, you swear full alignment with <em>Official Developer Guidelines</em> for Google YouTube Shorts, ByteDance TikTok API, and Meta Instagram/Facebook services platforms. If a social channel revokes access due to account misconduct, Omni-Cast is not liable.
             </p>
           </div>
 
@@ -76,7 +76,7 @@ export function TermsOfServicePage({ onBack }: TermsOfServicePageProps) {
             <div>
               <p className="font-extrabold text-slate-800">API Limitations and Warranties</p>
               <p className="text-[10px] text-slate-500 mt-0.5 font-medium leading-relaxed">
-                OmniCast tools are provided "as-is" without hidden guarantees regarding platform distribution success rates. Social systems constantly update: we adjust handshakes proactively, but do not warrant complete uptime for unannounced endpoint suspensions.
+                Omni-Cast tools are provided "as-is" without hidden guarantees regarding platform distribution success rates. Social systems constantly update: we adjust handshakes proactively, but do not warrant complete uptime for unannounced endpoint suspensions.
               </p>
             </div>
           </div>

@@ -423,6 +423,140 @@ app.post("/api/optimize", async (req: Request, res: Response) => {
   }
 });
 
+// API: Real Google OAuth callback handler to exchange code for YouTube token access
+app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
+  const { code, state } = req.query;
+
+  if (!code) {
+    return res.status(400).send("Authorization code missing from Google OAuth redirection.");
+  }
+
+  // Retrieve client credentials from process.env, or fallback to the serialized state parameter
+  let client_id = process.env.YOUTUBE_CLIENT_ID || "";
+  let client_secret = process.env.YOUTUBE_CLIENT_SECRET || "";
+
+  if (state) {
+    try {
+      const decodedState = JSON.parse(Buffer.from(state as string, "base64").toString("utf-8"));
+      if (decodedState.client_id) {
+        client_id = decodedState.client_id;
+      }
+      if (decodedState.client_secret) {
+        client_secret = decodedState.client_secret;
+      }
+    } catch (e) {
+      console.error("Failed to parse Google OAuth state:", e);
+    }
+  }
+
+  if (!client_id || !client_secret) {
+    return res.status(400).send(`
+      <html>
+        <body style="font-family: system-ui, -apple-system, sans-serif; padding: 32px; background: #f8fafc; color: #1e293b; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin:0;">
+          <div style="background: white; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; max-width: 420px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            <div style="color: #ef4444; font-size: 40px; margin-bottom: 12px;">⚠️</div>
+            <h2 style="color: #dc2626; margin: 0 0 12px 0; font-size: 18px; font-weight:800;">Google Credentials Missing</h2>
+            <p style="font-size:13px; color: #64748b; line-height:1.6; margin-bottom:20px;">We could not locate your Google Cloud Project Client ID or Client Secret. Please ensure they are supplied during the link configuration step.</p>
+            <button onclick="window.close()" style="background:#4f46e5; color:white; border:none; border-radius:8px; padding:10px 20px; font-weight:bold; cursor:pointer;">Close Window</button>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
+  try {
+    const tokenUrl = "https://oauth2.googleapis.com/token";
+    // Dynamically retrieve the correct redirect URI representing either dev or preview container running host
+    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+
+    console.log(`[Google OAuth]: Sending token exchange request to \${tokenUrl}`);
+    console.log(`[Google OAuth]: Redirect URI matched: \${redirectUri}`);
+
+    const tokenRes = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: code as string,
+        client_id: client_id,
+        client_secret: client_secret,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code"
+      }).toString()
+    });
+
+    const tokenData: any = await tokenRes.json();
+
+    if (!tokenRes.ok || !tokenData.access_token) {
+      throw new Error(tokenData.error_description || tokenData.error || "Failed to exchange google oauth code.");
+    }
+
+    // Attempt to query channel details from YouTube Data API v3
+    let channelTitle = "YouTube Connected Channel";
+    let avatarUrl = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=150&h=150&q=80";
+
+    try {
+      const channelRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
+        headers: {
+          Authorization: `Bearer \${tokenData.access_token}`
+        }
+      });
+      const channelData: any = await channelRes.json();
+      if (channelRes.ok && channelData.items && channelData.items.length > 0) {
+        const snippet = channelData.items[0].snippet;
+        channelTitle = snippet.title || "YouTube Channel";
+        avatarUrl = snippet.thumbnails?.default?.url || avatarUrl;
+      }
+    } catch (err: any) {
+      console.error("[Google OAuth Callback]: Retrieved token but failed fetching channel detail metadata:", err);
+    }
+
+    const payload = JSON.stringify({
+      type: "YOUTUBE_OAUTH_SUCCESS",
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      username: channelTitle,
+      avatarUrl: avatarUrl
+    });
+
+    res.send(`
+      <html>
+        <body style="font-family: system-ui, -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f8fafc; color: #1e293b; text-align: center; margin:0;">
+          <div style="background: white; padding: 32px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #e2e8f0; max-width: 400px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <svg style="width: 48px; height: 48px; color: #22c55e; margin-bottom: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800;">Google Authorized!</h2>
+            <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b; font-weight: 500; line-height:1.5;">Channel <strong>\${channelTitle}</strong> connected successfully. You can return to the Crosspost Desk.</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage(\${payload}, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+          </div>
+        </body>
+      </html>
+    `);
+
+  } catch (err: any) {
+    console.error("[Google OAuth Callback Error]:", err);
+    res.status(500).send(`
+      <html>
+        <body style="font-family: system-ui, -apple-system, sans-serif; padding: 32px; background: #f8fafc; color: #1e293b; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin:0;">
+          <div style="background: white; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; max-width: 420px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <div style="color: #ef4444; font-size: 40px; margin-bottom: 12px;">⚠️</div>
+            <h2 style="color: #dc2626; margin: 0 0 12px 0; font-size: 18px; font-weight:800;">Google Token Exchange Error</h2>
+            <pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 11px; border: 1px solid #e2e8f0; white-space: pre-wrap; font-family: monospace; text-align: left; max-height: 120px; overflow-y: auto;">\${err.message || String(err)}</pre>
+            <button onclick="window.close()" style="background:#64748b; color:white; border:none; border-radius:8px; padding:10px 20px; font-weight:bold; cursor:pointer; margin-top:20px;">Close Window</button>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+});
+
 // API: Securely revoke OAuth tokens and purge cached credentials
 app.post("/api/revoke", async (req: Request, res: Response) => {
   const { platform, token } = req.body;

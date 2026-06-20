@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Lock, 
@@ -11,7 +11,9 @@ import {
   EyeOff,
   User,
   Info,
-  CheckCircle2
+  CheckCircle2,
+  ExternalLink,
+  Copy
 } from "lucide-react";
 import { ConnectedAccount } from "../types";
 
@@ -20,7 +22,7 @@ interface PlatformLinkModalProps {
   onClose: () => void;
   platformId: string; // e.g. "acc-tiktok"
   platformName: "tiktok" | "instagram" | "facebook" | "youtube_shorts";
-  onCompleteLink: (platformId: string, username: string) => void;
+  onCompleteLink: (platformId: string, username: string, token?: string, avatarUrl?: string) => void;
 }
 
 export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
@@ -37,7 +39,15 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  // Permissions lists by platform
+  // Real YouTube OAuth States
+  const [integrationMode, setIntegrationMode] = useState<"real" | "sandbox">("real");
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [receivedToken, setReceivedToken] = useState<string | null>(null);
+  const [receivedAvatar, setReceivedAvatar] = useState<string | null>(null);
+  const [copiedRedirectUri, setCopiedRedirectUri] = useState(false);
+
+  // Scopes & Permissions lists by platform
   const initialPermissions = {
     tiktok: [
       { id: "video.upload", label: "Direct feed publication to TikTok Reels", enabled: true, desc: "Allows uploading short video clips directly into your public feed." },
@@ -62,6 +72,40 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
   };
 
   const [permissions, setPermissions] = useState(initialPermissions[platformName]);
+
+  // Sync permissions if platformName changes
+  useEffect(() => {
+    setPermissions(initialPermissions[platformName]);
+    // Reset wizard states
+    setStep(1);
+    setUsername("");
+    setPassword("");
+    setReceivedToken(null);
+    setReceivedAvatar(null);
+    setErrorText(null);
+  }, [platformName]);
+
+  // Listen for callback messages from popup redirection callback
+  useEffect(() => {
+    const handleGoogleMessage = (event: MessageEvent) => {
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+        return;
+      }
+
+      if (event.data?.type === "YOUTUBE_OAUTH_SUCCESS") {
+        const { accessToken, username: channelName, avatarUrl } = event.data;
+        setUsername(channelName);
+        setReceivedToken(accessToken);
+        setReceivedAvatar(avatarUrl);
+        setStep(3); // Go straight to success state!
+        setIsVerifying(false);
+      }
+    };
+
+    window.addEventListener("message", handleGoogleMessage);
+    return () => window.removeEventListener("message", handleGoogleMessage);
+  }, []);
 
   const togglePermission = (id: string) => {
     setPermissions(prev => prev.map(p => {
@@ -89,6 +133,55 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
       case "facebook": return "from-blue-600 to-indigo-700";
       case "youtube_shorts": return "from-red-600 to-orange-500";
       default: return "from-indigo-600 to-blue-500";
+    }
+  };
+
+  const getRedirectUri = () => {
+    return `${window.location.origin}/api/auth/google/callback`;
+  };
+
+  const handleCopyRedirectUri = () => {
+    navigator.clipboard.writeText(getRedirectUri());
+    setCopiedRedirectUri(true);
+    setTimeout(() => setCopiedRedirectUri(false), 2000);
+  };
+
+  // Google OAuth Popup authorization flow trigger
+  const handleGoogleOAuthStart = () => {
+    setErrorText(null);
+    
+    // Fallback to env or serialize inputs
+    const clientId = googleClientId.trim();
+    const clientSecret = googleClientSecret.trim();
+
+    // Prepare state to pass down to redirection so server can retrieve correct keys
+    const stateObj = { client_id: clientId, client_secret: clientSecret };
+    const stateB64 = btoa(JSON.stringify(stateObj));
+
+    const redirectUri = encodeURIComponent(getRedirectUri());
+    const scopes = encodeURIComponent("https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly openid email profile");
+
+    // Client ID validation fallback notice
+    let finalClientId = clientId;
+    if (!finalClientId) {
+      // Prompt user that standard fallback will be used if they didn't provide inputs
+      setErrorText("Google Cloud App Client ID and Client Secret are required. Please copy them from your Cloud Console Credentials page.");
+      return;
+    }
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(finalClientId)}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}&access_type=offline&prompt=consent&state=${stateB64}`;
+
+    setIsVerifying(true);
+
+    const authWindow = window.open(
+      authUrl,
+      "google_oauth_popup",
+      "width=600,height=700,status=no,resizable=yes,scrollbars=yes"
+    );
+
+    if (!authWindow) {
+      setIsVerifying(false);
+      setErrorText("Popup blocked. Please enable popups for this site to complete the YouTube verification.");
     }
   };
 
@@ -123,17 +216,19 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
   };
 
   const handleFinalConnect = () => {
-    // Standardize handle prefix
     let finalHandle = username.trim();
     if (!finalHandle.startsWith("@") && platformName !== "facebook") {
       finalHandle = "@" + finalHandle;
     }
-    onCompleteLink(platformId, finalHandle);
+    // Complete handoff
+    onCompleteLink(platformId, finalHandle, receivedToken || undefined, receivedAvatar || undefined);
     onClose();
-    // Reset modal
+    // Reset wizard
     setStep(1);
     setUsername("");
     setPassword("");
+    setReceivedToken(null);
+    setReceivedAvatar(null);
     setErrorText(null);
   };
 
@@ -159,7 +254,7 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
           <button 
             onClick={onClose}
             type="button" 
-            className="p-1 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-colors text-xs font-black"
+            className="p-1 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-colors text-xs font-black cursor-pointer"
           >
             ✕
           </button>
@@ -169,86 +264,214 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
         <div className="bg-emerald-50 border-y border-emerald-100 px-3.5 py-1.5 flex items-center justify-between text-[10px] text-emerald-800 font-bold">
           <span className="flex items-center gap-1.5 font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            SECURE SHA-256 ENCRYPTED GATEWAY
+            SECURE ACCESS GATEWAY
           </span>
-          <span className="text-slate-400 font-normal">OAuth 2.0</span>
+          <span className="text-slate-400 font-normal">OAuth 2.0 Real Protocol</span>
         </div>
 
         <div className="p-5">
-          {/* STEP 1: LOGIN COMPONENT */}
+          {/* STEP 1: AUTHENTICATION / CONFIGURATION */}
           {step === 1 && (
             <div className="space-y-4 animate-fade-in">
-              <div className="text-center space-y-1">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto shadow-xs border border-slate-200">
-                  <User className="w-5 h-5 text-slate-600" />
-                </div>
-                <h4 className="text-sm font-heavy text-slate-800">Account Authorization</h4>
-                <p className="text-xs text-slate-450">Log into your creator account to verify possession before selecting permissions.</p>
-              </div>
-
-              {errorText && (
-                <div className="bg-rose-50 border border-rose-150 p-2.5 rounded-xl flex gap-2.5 text-xs text-rose-800 items-start">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <p>{errorText}</p>
+              {/* YouTube specific sub-tabs to switch between Real and Sandbox */}
+              {platformName === "youtube_shorts" && (
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIntegrationMode("real");
+                      setErrorText(null);
+                    }}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      integrationMode === "real"
+                        ? "bg-white text-rose-600 shadow-3xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    🚀 Real YouTube API
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIntegrationMode("sandbox");
+                      setErrorText(null);
+                    }}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      integrationMode === "sandbox"
+                        ? "bg-white text-slate-700 shadow-3xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    🛠️ Developer Sandbox
+                  </button>
                 </div>
               )}
 
-              <form onSubmit={handleStep1Submit} className="space-y-3.5">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Creator Username / Email</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      required
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder={platformName === "facebook" ? "e.g. Creator Agency HQ" : "e.g. daily_clips_hq"}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none transition-all text-slate-800"
-                    />
+              {/* REAL YOUTUBE FLOW RENDER */}
+              {platformName === "youtube_shorts" && integrationMode === "real" ? (
+                <div className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center mx-auto shadow-xs">
+                      <PlayIcon className="w-6 h-6 stroke-[2]" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-800">YouTube Channel Setup</h4>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Connect your YouTube channel using Google Cloud App credentials, so videos you publish will stream directly to your live channel.
+                    </p>
                   </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-sans">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-9 pr-9 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none transition-all text-slate-800"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isVerifying}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl shadow-md transition-all uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-                >
-                  {isVerifying ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Authenticating Credentials...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Log In & Connect</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
+                  {errorText && (
+                    <div className="bg-rose-50 border border-rose-150 p-2.5 rounded-xl flex gap-2.5 text-xs text-rose-800 items-start">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <p className="font-medium">{errorText}</p>
+                    </div>
                   )}
-                </button>
-              </form>
+
+                  {/* Settings inputs for Client ID & Client Secret */}
+                  <div className="space-y-3 pt-1 text-left">
+                    {/* Authorized Redirect URI view */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Google Redirect URI (Callback URL)</span>
+                      <p className="text-[10px] text-slate-500 leading-snug">
+                        Copy this redirect URL and paste it into your Google Developer Console under <strong className="text-slate-700">Authorized Redirect URIs</strong>:
+                      </p>
+                      <div className="flex gap-1.5 pt-1">
+                        <input
+                          type="text"
+                          readOnly
+                          value={getRedirectUri()}
+                          className="flex-1 bg-white border border-slate-200 p-1.5 px-2.5 rounded-lg text-[9.5px] font-mono text-slate-600 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCopyRedirectUri}
+                          className="p-1.5 px-2.5 bg-indigo-55 hover:bg-indigo-100 text-indigo-650 rounded-lg border border-indigo-150 font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                          title="Copy reference Callback URL"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>{copiedRedirectUri ? "Copied!" : "Copy"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Google OAuth Client ID</label>
+                      <input
+                        type="text"
+                        value={googleClientId}
+                        onChange={(e) => setGoogleClientId(e.target.value)}
+                        placeholder="e.g. 123456-abcdefg.apps.googleusercontent.com"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-rose-500 rounded-xl text-xs font-mono focus:outline-none transition-all text-slate-800"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Google OAuth Client Secret</label>
+                      <input
+                        type="password"
+                        value={googleClientSecret}
+                        onChange={(e) => setGoogleClientSecret(e.target.value)}
+                        placeholder="e.g. GOCSPX-abc123xyz"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-rose-500 rounded-xl text-xs font-mono focus:outline-none transition-all text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleOAuthStart}
+                    disabled={isVerifying}
+                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl shadow-md transition-all uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>AWAITING GOOGLE OAUTH POPUP...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Authorize Google Account</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                /* SIMULATED USERNAME & PASSWORD FLOW */
+                <div className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto shadow-xs border border-slate-200">
+                      <User className="w-5 h-5 text-slate-600" />
+                    </div>
+                    <h4 className="text-sm font-heavy text-slate-800">Account Authorization</h4>
+                    <p className="text-xs text-slate-450">Log into your creator account to verify possession before selecting permissions.</p>
+                  </div>
+
+                  {errorText && (
+                    <div className="bg-rose-50 border border-rose-150 p-2.5 rounded-xl flex gap-2.5 text-xs text-rose-800 items-start">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <p>{errorText}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleStep1Submit} className="space-y-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Creator Username / Email</label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="text" 
+                          required
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          placeholder={platformName === "facebook" ? "e.g. Creator Agency HQ" : "e.g. daily_clips_hq"}
+                          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 font-sans">Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-9 pr-9 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none transition-all text-slate-800"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isVerifying}
+                      className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl shadow-md transition-all uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                    >
+                      {isVerifying ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Authenticating Credentials...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Log In & Connect</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
 
@@ -256,9 +479,9 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
           {step === 2 && (
             <div className="space-y-4 animate-fade-in text-left">
               <div className="space-y-1 text-center bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
-                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">Scopes & Permissions Request</h4>
+                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide font-sans">Scopes & Permissions Request</h4>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  <strong>OmniCast Desk</strong> requires the following permissions to push content to your <strong>{username}</strong> credentials. Toggle active scopes below:
+                  <strong>Omni-Cast Desk</strong> requires the following permissions to push content to your <strong>{username}</strong> credentials. Toggle active scopes below:
                 </p>
               </div>
 
@@ -332,6 +555,13 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
                 </p>
               </div>
 
+              {receivedAvatar && (
+                <div className="flex items-center justify-center gap-2 bg-slate-50/50 p-2.5 border border-slate-150 rounded-xl w-3/4 mx-auto">
+                  <img src={receivedAvatar} alt={username} className="w-8 h-8 rounded-full border border-slate-200" referrerPolicy="no-referrer" />
+                  <span className="text-xs font-bold text-slate-700 truncate">{username}</span>
+                </div>
+              )}
+
               <div className="bg-slate-50 rounded-xl p-3 border border-slate-150 text-[10px] font-mono text-slate-500 text-left space-y-1">
                 <div className="flex justify-between">
                   <span className="font-bold text-slate-700">TOKEN STATUS:</span>
@@ -339,7 +569,7 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="font-bold text-slate-700">AUTHORIZED FLOW:</span>
-                  <span>OAUTH_2.0_AUTH_CODE</span>
+                  <span>{receivedToken ? "REAL_YOUTUBE_OAUTH_CODE" : "OAUTH_2.0_SANDBOX_FLOW"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="font-bold text-slate-700">GRANTED SCOPES:</span>
@@ -360,3 +590,19 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
     </div>
   );
 };
+
+// Simple Fallback PlayIcon (SVG component)
+function PlayIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
+  );
+}

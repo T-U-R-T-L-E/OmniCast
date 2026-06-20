@@ -5,6 +5,7 @@ export interface ConnectedAccount {
   avatarUrl: string;
   connected: boolean;
   status: "active" | "expired" | "not_connected";
+  token?: string;
 }
 
 export interface PlatformOptimization {

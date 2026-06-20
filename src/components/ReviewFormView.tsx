@@ -38,7 +38,7 @@ const DEFAULT_REVIEWS: Review[] = [
     role: "Senior Full-Stack Engineer",
     platform: "API Dev",
     rating: 5,
-    content: "The API latency is extremely low and the automated multi-channel optimization saved our workflow. Integrating OmniCast took less than 15 minutes. Pure gold!",
+    content: "The API latency is extremely low and the automated multi-channel optimization saved our workflow. Integrating Omni-Cast took less than 15 minutes. Pure gold!",
     tags: ["API Integration", "Speed"],
     date: "June 15, 2026",
     likes: 24,
@@ -50,7 +50,7 @@ const DEFAULT_REVIEWS: Review[] = [
     role: "Content Creator",
     platform: "TikTok & Reels",
     rating: 5,
-    content: "Calculating video size caps and rendering aspect ratio previews directly in OmniCast makes posting reels so reliable. It completely eliminated rejected uploads.",
+    content: "Calculating video size caps and rendering aspect ratio previews directly in Omni-Cast makes posting reels so reliable. It completely eliminated rejected uploads.",
     tags: ["Usability", "Features"],
     date: "June 18, 2026",
     likes: 18,
@@ -126,7 +126,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
       id: `rev-${Date.now()}`,
       name: name.trim(),
       role: "Verified Creator",
-      platform: "OmniCast Dynamic Desktop",
+      platform: "Omni-Cast Dynamic Desktop",
       rating,
       content: content.trim(),
       tags: ["Feedback"],
@@ -204,7 +204,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
           <span>ESTABLISH TRUST SCORE</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-          How satisfied are you with OmniCast?
+          How satisfied are you with Omni-Cast?
         </h1>
         <p className="text-sm sm:text-base text-slate-500 leading-relaxed font-semibold">
           Your direct feedback helps us optimize the publishing queue, expand channel metrics, and build better APIs for creators.
@@ -222,7 +222,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
               Review Submitted Successfully! <Sparkles className="w-4 h-4 text-emerald-600" />
             </h4>
             <p className="text-xs text-emerald-700 font-semibold">
-              Thank you for trusting OmniCast. Your feedback has been parsed and is now showing in the community log below.
+              Thank you for trusting Omni-Cast. Your feedback has been parsed and is now showing in the community log below.
             </p>
           </div>
         </div>
@@ -309,7 +309,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
                 id="reviewer-content-textarea"
                 rows={4}
                 maxLength={600}
-                placeholder="What do you love most about using OmniCast? Mention the ease of configuration, multi-platform previewing, or API limits..."
+                placeholder="What do you love most about using Omni-Cast? Mention the ease of configuration, multi-platform previewing, or API limits..."
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:bg-white transition-all text-slate-800 leading-relaxed resize-y"

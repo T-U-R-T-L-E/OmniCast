@@ -83,7 +83,7 @@ export function DocumentationView({ onAddToast, onNavigatePage, initialTab }: Do
     {
       title: "Short-Lived Token Expirations",
       icon: Key,
-      desc: "Creators often face auth expiry. Meta Graph API keys expire every 60 days. OmniCast implements proactive background warning hooks to notify you 7 days prior to expiry.",
+      desc: "Creators often face auth expiry. Meta Graph API keys expire every 60 days. Omni-Cast implements proactive background warning hooks to notify you 7 days prior to expiry.",
       solution: "In our Operations tab, use 'Renew Authorization' to re-verify OAuth access, generating a safe, persistent system user token for server posts."
     },
     {
@@ -96,7 +96,7 @@ export function DocumentationView({ onAddToast, onNavigatePage, initialTab }: Do
       title: "HTTP 429 Throttling Boundaries",
       icon: ShieldAlert,
       desc: "Simultaneous cross-posting across multiple major platforms can trigger IP level rate throttling during batch distributions.",
-      solution: "OmniCast leverages queue scheduling that spreads publishing triggers by 14-second offset intervals, gracefully handling exponential backoff loops."
+      solution: "Omni-Cast leverages queue scheduling that spreads publishing triggers by 14-second offset intervals, gracefully handling exponential backoff loops."
     },
     {
       title: "TikTok Block Upload Limitations (Chunking)",
@@ -109,7 +109,7 @@ export function DocumentationView({ onAddToast, onNavigatePage, initialTab }: Do
   const faqs: FAQ[] = [
     {
       id: "faq-1",
-      question: "Which platforms are supported by the OmniCast cross-posting engine?",
+      question: "Which platforms are supported by the Omni-Cast cross-posting engine?",
       answer: "We support Meta Graph API (Instagram Reels and Facebook Pages), YouTube Shorts Data API v3, and the TikTok Direct Publishing API, all organized side-by-side using high-fidelity previews.",
       category: "general"
     },
@@ -122,7 +122,7 @@ export function DocumentationView({ onAddToast, onNavigatePage, initialTab }: Do
     {
       id: "faq-3",
       question: "How do I secure my personal endpoints or API credentials?",
-      answer: "API keys should NEVER be exposed to the client browser. OmniCast routes all publishing requests through our server-side API proxy (/api/*) keeping database endpoints and secret tokens hidden safely behind encrypted local storage policies.",
+      answer: "API keys should NEVER be exposed to the client browser. Omni-Cast routes all publishing requests through our server-side API proxy (/api/*) keeping database endpoints and secret tokens hidden safely behind encrypted local storage policies.",
       category: "authentication"
     },
     {
@@ -156,7 +156,7 @@ export function DocumentationView({ onAddToast, onNavigatePage, initialTab }: Do
             v2.4 Technical docs
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            OmniCast Hub & Support
+            Omni-Cast Hub & Support
           </h1>
           <p className="text-sm text-slate-300 leading-relaxed font-semibold">
             Discover architectural specifications, solve API rate limitations, simulate optimal video aspect ratios, write testimonials, and message support directly.
@@ -240,7 +240,7 @@ export function DocumentationView({ onAddToast, onNavigatePage, initialTab }: Do
                 Core Features & Navigation
               </h2>
               <p className="text-xs text-slate-555 font-semibold">
-                Quickly jump between OmniCast modules to verify credentials or deploy simulated publishing sequences.
+                Quickly jump between Omni-Cast modules to verify credentials or deploy simulated publishing sequences.
               </p>
             </div>
 

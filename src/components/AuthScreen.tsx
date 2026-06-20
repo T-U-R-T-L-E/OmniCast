@@ -366,13 +366,16 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
           <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-550 via-blue-500 to-indigo-600" />
 
           {/* Core App Context & Logo */}
-          <div className="flex flex-col items-center justify-center text-center space-y-3 pt-2">
-            <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black shadow-lg border border-indigo-400/20">
-              <Compass className="w-6 h-6" />
-            </div>
+          <div className="flex flex-col items-center justify-center text-center space-y-2 pt-2">
+            <img 
+              src="https://past-aquamarine-opezzkg3.edgeone.app/logo%204%20(2).png" 
+              alt="Omni-Cast logo" 
+              className="h-14 object-contain mx-auto"
+              referrerPolicy="no-referrer"
+            />
             <div>
-              <h1 className="text-lg font-black text-slate-900 uppercase tracking-widest leading-none">OmniCast</h1>
-              <p className="text-[10px] text-indigo-650 font-bold font-mono tracking-widest uppercase mt-1">Cross-Post Desk</p>
+              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Welcome to Omni-Cast</h1>
+              <p className="text-[10px] text-indigo-650 font-bold font-mono tracking-widest uppercase mt-0.5">Cross-Platform Video Distribution</p>
             </div>
           </div>
 
@@ -537,7 +540,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
               {/* Registration Redirection */}
               <div className="border-t border-slate-100 pt-4 text-center">
                 <p className="text-xs text-slate-500 font-semibold">
-                  New creator on OmniCast?{" "}
+                  New creator on Omni-Cast?{" "}
                   <button 
                     type="button" 
                     onClick={() => setMode("signup")}
@@ -978,7 +981,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
 
         {/* Footer containing Terms & Privacy links with direct trigger view */}
         <div className="mt-6 flex items-center justify-center space-x-3 text-[11px] text-slate-400 font-semibold select-none">
-          <span className="font-black text-slate-600 tracking-wider">OmniCast</span>
+          <span className="font-black text-slate-600 tracking-wider">Omni-Cast</span>
           <span>•</span>
           <button
             type="button"
@@ -1034,20 +1037,20 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                 {authModalView === "terms" ? (
                   <>
                     <p className="font-bold text-slate-800">1. Acceptance of Terms</p>
-                    <p>By creating an account on OmniCast, you acknowledge you have read, grasped, and verified compliance with our services guidelines.</p>
+                    <p>By creating an account on Omni-Cast, you acknowledge you have read, grasped, and verified compliance with our services guidelines.</p>
                     <p className="font-bold text-slate-800">2. Platform Dispatch Compliance</p>
-                    <p>OmniCast acts as a cross-posting workflow hub. Users are solely responsible for compliance with specific platform policies (including YouTube Shorts, TikTok, Instagram, and Facebook terms of service). Any violation of third-party guidelines may lead to account de-authorization.</p>
-                    <p className="font-bold text-slate-800">3. Fair & Proper Usage</p>
+                    <p>Omni-Cast acts as a cross-posting workflow hub. Users are solely responsible for compliance with specific platform policies (including YouTube Shorts, TikTok, Instagram, and Facebook terms of service). Any violation of third-party guidelines may lead to account de-authorization.</p>
+                    <p className="font-bold text-slate-850">3. Fair & Proper Usage</p>
                     <p>All automated tasks must use authorized endpoint tokens. Spamming, bulk duplication of copyrighted assets, or routing of malware vectors is strictly forbidden and results in instant, permanent account ban.</p>
                     <p className="font-bold text-slate-800">4. Modifications & Services</p>
-                    <p>We reserve absolute rights to optimize, adjust, or suspend features of OmniCast to preserve system integrity or comply with social network adjustments.</p>
+                    <p>We reserve absolute rights to optimize, adjust, or suspend features of Omni-Cast to preserve system integrity or comply with social network adjustments.</p>
                   </>
                 ) : (
                   <>
                     <p className="font-bold text-slate-800">1. Information We Collect</p>
                     <p>We receive database entries with your email address securely persisted via Google Firebase Authentication. For dispatch functionalities, social profile tokens are cached safely inside secure local client-side memory blocks.</p>
                     <p className="font-bold text-slate-800">2. Asset Retention and Safety</p>
-                    <p>Media files uploaded to OmniCast (e.g. MP4 clips) are processed safely and routed securely to selected platform endpoints. We do not sell or lease any user assets to telemetry brokers or marketing organizations.</p>
+                    <p>Media files uploaded to Omni-Cast (e.g. MP4 clips) are processed safely and routed securely to selected platform endpoints. We do not sell or lease any user assets to telemetry brokers or marketing organizations.</p>
                     <p className="font-bold text-slate-800">3. Cookie Configuration</p>
                     <p>We use essential local state records to keep authenticated creators connected without displaying repeated password verification modals.</p>
                     <p className="font-bold text-slate-800">4. Security Standards</p>

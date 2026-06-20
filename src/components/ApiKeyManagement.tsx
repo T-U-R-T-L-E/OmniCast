@@ -120,7 +120,7 @@ export function ApiKeyManagement({
           API Key Management
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-medium">
-          Generate and manage API keys to authenticate requests against the OmniCast API. Keep them secret — anyone with a key can post on your behalf.
+          Generate and manage API keys to authenticate requests against the Omni-Cast API. Keep them secret — anyone with a key can post on your behalf.
         </p>
       </div>
 

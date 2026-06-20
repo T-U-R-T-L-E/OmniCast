@@ -738,7 +738,25 @@ export default function App() {
     };
   }, []);
 
-  // Update high-quality clean URLs whenever activePage shifts inside the web app
+  const PAGE_TABS_TITLES: Record<string, string> = {
+    "users": "Users Center",
+    "apikeys": "API Keys",
+    "upload": "Upload Video",
+    "calendar": "Calendar Planner",
+    "analytics": "Analytics Dashboard",
+    "pricing": "Pricing Plans",
+    "docs": "Documentation Hub",
+    "profile": "Profile & Settings",
+    "queue_settings": "Queue Settings",
+    "invoices": "Invoices",
+    "connected_apps": "Connected Platforms",
+    "team_management": "Team",
+    "history": "Distribution History",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  };
+
+  // Update high-quality clean URLs and page tab title whenever activePage shifts inside the web app
   useEffect(() => {
     const path = window.location.pathname;
     const targetPath = PAGE_TO_PATH[activePage];
@@ -747,6 +765,10 @@ export default function App() {
     } else if (!targetPath && path !== "/") {
       window.history.pushState(null, "", "/");
     }
+
+    // Dynamically update document title to correspond perfectly with active screen
+    const sectionTitle = PAGE_TABS_TITLES[activePage] || "Cross-Platform Video Distribution";
+    document.title = `${sectionTitle} | Omni-Cast`;
   }, [activePage]);
 
   // Load campaigns user-specific history when authedUser becomes active
@@ -881,6 +903,23 @@ export default function App() {
       return a;
     }));
     triggerToast(`Platform handle updated successfully`);
+  };
+
+  const handleCompleteAccountLink = (platformId: string, username: string, token?: string, avatarUrl?: string) => {
+    saveAccounts(accounts.map(a => {
+      if (a.id === platformId) {
+        return { 
+          ...a, 
+          username, 
+          connected: true, 
+          status: "active" as const,
+          token: token || a.token,
+          avatarUrl: avatarUrl || a.avatarUrl
+        };
+      }
+      return a;
+    }));
+    triggerToast(`Social channel "${username}" linked & authorized successfully!`);
   };
 
   const handleRevokeOAuth = async (platform: string, platformId: string) => {
@@ -1296,10 +1335,10 @@ export default function App() {
           facebookSettings,
           simulateErrors: simulatePlatformErrors,
           credentials: {
-            youtube_token: "mock_youtube_token",
-            tiktok_token: "mock_tiktok_token",
-            instagram_token: "mock_ig_token",
-            facebook_token: "mock_fb_token"
+            youtube_token: accounts.find(a => a.platform === "youtube_shorts")?.token || "mock_youtube_token",
+            tiktok_token: accounts.find(a => a.platform === "tiktok")?.token || "mock_tiktok_token",
+            instagram_token: accounts.find(a => a.platform === "instagram")?.token || "mock_ig_token",
+            facebook_token: accounts.find(a => a.platform === "facebook")?.token || "mock_fb_token"
           }
         })
       });
@@ -1479,10 +1518,10 @@ export default function App() {
           facebookSettings,
           simulateErrors: simulatePlatformErrors,
           credentials: {
-            youtube_token: "mock_youtube_token",
-            tiktok_token: "mock_tiktok_token",
-            instagram_token: "mock_ig_token",
-            facebook_token: "mock_fb_token"
+            youtube_token: accounts.find(a => a.platform === "youtube_shorts")?.token || "mock_youtube_token",
+            tiktok_token: accounts.find(a => a.platform === "tiktok")?.token || "mock_tiktok_token",
+            instagram_token: accounts.find(a => a.platform === "instagram")?.token || "mock_ig_token",
+            facebook_token: accounts.find(a => a.platform === "facebook")?.token || "mock_fb_token"
           }
         })
       });
@@ -1864,12 +1903,12 @@ export default function App() {
         <div className="flex items-center space-x-3.5">
           <img 
             src="https://past-aquamarine-opezzkg3.edgeone.app/logo%204%20(2).png" 
-            alt="OmniCast Logo" 
+            alt="Omni-Cast Logo" 
             className="w-9 h-9 object-contain rounded-lg"
             referrerPolicy="no-referrer"
           />
           <div>
-            <span className="font-black text-lg tracking-tight text-slate-900 block font-sans leading-none">OmniCast</span>
+            <span className="font-black text-lg tracking-tight text-slate-900 block font-sans leading-none">Omni-Cast</span>
             <span className="hidden sm:block text-[10px] text-slate-400 font-bold tracking-wider mt-1">CROSS-PLATFORM API DISTRIBUTION</span>
           </div>
           <span className="hidden md:inline px-2 py-0.5 bg-slate-150 text-slate-600 text-[10px] uppercase tracking-widest font-extrabold rounded">
@@ -2240,6 +2279,7 @@ export default function App() {
                   onToggleConnect={handleToggleConnect}
                   onUpdateUsername={handleUpdateUsername}
                   onRevokeOAuth={handleRevokeOAuth}
+                  onCompleteAccountLink={handleCompleteAccountLink}
                 />
               </div>
               <div className="lg:col-span-5">
@@ -2250,7 +2290,7 @@ export default function App() {
                     <p className="text-[11px] text-slate-400">Configure global profile scopes and token handshakes</p>
                   </div>
                   <p className="text-xs text-slate-550 leading-relaxed font-semibold">
-                    Social tokens are securely persistent in the client session. When token lifetimes expire, OmniCast schedules transparent OAuth handshakes via standard refresh grant types.
+                    Social tokens are securely persistent in the client session. When token lifetimes expire, Omni-Cast schedules transparent OAuth handshakes via standard refresh grant types.
                   </p>
                   {/* Daily API budget stats */}
                   <div className="bg-slate-50 border border-slate-150 rounded-xl p-3.5 space-y-2 text-left">
@@ -2333,7 +2373,7 @@ export default function App() {
               onLogout={async () => {
                 try {
                   await logOutUser();
-                  triggerToast("👋 Checked out of the OmniCast authorized cycle.");
+                  triggerToast("👋 Checked out of the Omni-Cast authorized cycle.");
                 } catch (e) {
                   triggerToast("Could not complete logout handoff");
                 }
@@ -2423,6 +2463,7 @@ export default function App() {
             onToggleConnect={handleToggleConnect}
             onUpdateUsername={handleUpdateUsername}
             onRevokeOAuth={handleRevokeOAuth}
+            onCompleteAccountLink={handleCompleteAccountLink}
           />
 
           {/* Real-world API Distribution Bridge Guide */}
@@ -5527,11 +5568,11 @@ META_APP_SECRET=your_meta_app_secret_here`}
               <div className="flex items-center space-x-2">
                 <img 
                   src="https://past-aquamarine-opezzkg3.edgeone.app/logo%204%20(2).png" 
-                  alt="OmniCast Logo" 
+                  alt="Omni-Cast Logo" 
                   className="w-6 h-6 object-contain rounded-md"
                   referrerPolicy="no-referrer"
                 />
-                <span className="font-black text-sm text-slate-900">OmniCast</span>
+                <span className="font-black text-sm text-slate-900">Omni-Cast</span>
               </div>
               <p className="text-[11px] text-slate-450 leading-relaxed max-w-xs">
                 Your API solution for all social media platforms. Simplifying content management for developers and creators.
@@ -5597,11 +5638,11 @@ META_APP_SECRET=your_meta_app_secret_here`}
           {/* Legal Pages & Disclosures Band */}
           <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <div className="flex items-center space-x-2">
-              <span className="font-black text-slate-705">OmniCast</span>
+              <span className="font-black text-slate-705">Omni-Cast</span>
               <span>•</span>
               <span className="font-semibold text-slate-500">Cross-Platform Hub</span>
               <span>•</span>
-              <span>© {new Date().getFullYear()} OmniCast. All rights reserved.</span>
+              <span>© {new Date().getFullYear()} Omni-Cast. All rights reserved.</span>
             </div>
             <div className="flex items-center space-x-4 animate-pulse-slow">
               <button 
@@ -5751,7 +5792,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                 <div className="flex items-center gap-2">
                   <span className="text-indigo-600 text-sm animate-pulse">✦</span>
                   <h3 className="font-extrabold text-slate-800 text-xs tracking-wider uppercase font-sans">
-                    OmniCast Command
+                    Omni-Cast Command
                   </h3>
                 </div>
                 <button 
@@ -6001,7 +6042,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                   setIsMobileMoreOpen(false);
                   try {
                     await logOutUser();
-                    triggerToast("👋 Checked out of the OmniCast authorized cycle.");
+                    triggerToast("👋 Checked out of the Omni-Cast authorized cycle.");
                   } catch (e) {
                     triggerToast("Could not complete logout handoff");
                   }

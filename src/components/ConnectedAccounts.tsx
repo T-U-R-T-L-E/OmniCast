@@ -8,6 +8,7 @@ interface ConnectedAccountsProps {
   onToggleConnect: (platformId: string) => void;
   onUpdateUsername: (platformId: string, username: string) => void;
   onRevokeOAuth?: (platform: string, platformId: string) => Promise<void>;
+  onCompleteAccountLink?: (platformId: string, username: string, token?: string, avatarUrl?: string) => void;
 }
 
 export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
@@ -15,6 +16,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
   onToggleConnect,
   onUpdateUsername,
   onRevokeOAuth,
+  onCompleteAccountLink,
 }) => {
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
   const [tempUsername, setTempUsername] = useState("");
@@ -317,9 +319,13 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           onClose={() => setLinkingPlatform(null)}
           platformId={linkingPlatform.id}
           platformName={linkingPlatform.platform}
-          onCompleteLink={(id, username) => {
-            onUpdateUsername(id, username);
-            onToggleConnect(id);
+          onCompleteLink={(id, username, token, avatarUrl) => {
+            if (onCompleteAccountLink) {
+              onCompleteAccountLink(id, username, token, avatarUrl);
+            } else {
+              onUpdateUsername(id, username);
+              onToggleConnect(id);
+            }
           }}
         />
       )}

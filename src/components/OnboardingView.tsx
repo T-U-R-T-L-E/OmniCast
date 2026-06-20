@@ -113,7 +113,7 @@ export function OnboardingView({ accounts, campaigns, setActivePage, setUploadSt
         </div>
         
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight font-sans">
-          Welcome to <span className="text-indigo-600 bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">OmniCast</span>
+          Welcome to <span className="text-indigo-600 bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">Omni-Cast</span>
         </h1>
         
         <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto font-medium leading-relaxed">

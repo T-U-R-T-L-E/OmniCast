@@ -150,7 +150,7 @@ export function PricingView({ onAddToast }: PricingViewProps) {
       role: "CEO, Teknoviar",
       avatar: "SB",
       rating: 5,
-      content: "I'm managing 70 million views monthly across 20 languages. I reported a Facebook bug — the Co-founder personally fixed it and deployed it within hours. Moving to OmniCast was the best business decision I've made this year.",
+      content: "I'm managing 70 million views monthly across 20 languages. I reported a Facebook bug — the Co-founder personally fixed it and deployed it within hours. Moving to Omni-Cast was the best business decision I've made this year.",
       platform: "Instagram"
     },
     {
@@ -158,7 +158,7 @@ export function PricingView({ onAddToast }: PricingViewProps) {
       role: "Developer, akita",
       avatar: "I",
       rating: 5,
-      content: "I was looking for a reliable API and OmniCast was incredibly easy to integrate. It streamlined my entire workflow and saves me 2+ hours of manual effort every single day.",
+      content: "I was looking for a reliable API and Omni-Cast was incredibly easy to integrate. It streamlined my entire workflow and saves me 2+ hours of manual effort every single day.",
       platform: "Twitter"
     }
   ];
@@ -202,7 +202,7 @@ export function PricingView({ onAddToast }: PricingViewProps) {
   ];
 
   const handleSubscribe = (planName: string, calculatedPrice: number) => {
-    onAddToast(`Initiating Stripe redirect for OmniCast ${planName} plan ($${calculatedPrice}/${billingCycle === "yearly" ? "yr" : "mo"})...`);
+    onAddToast(`Initiating Stripe redirect for Omni-Cast ${planName} plan ($${calculatedPrice}/${billingCycle === "yearly" ? "yr" : "mo"})...`);
   };
 
   return (
@@ -487,7 +487,7 @@ export function PricingView({ onAddToast }: PricingViewProps) {
             Highly trusted by global teams
           </h2>
           <p className="text-xs text-slate-400 font-semibold max-w-md mx-auto">
-            See why leading developers and digital agencies publish via OmniCast.
+            See why leading developers and digital agencies publish via Omni-Cast.
           </p>
         </div>
 
