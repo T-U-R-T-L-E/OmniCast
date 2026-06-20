@@ -423,6 +423,33 @@ app.post("/api/optimize", async (req: Request, res: Response) => {
   }
 });
 
+// API: Generate real Google OAuth authorization URL using host dynamics and server credentials
+app.get("/api/auth/google/url", (req: Request, res: Response) => {
+  const client_id = process.env.YOUTUBE_CLIENT_ID;
+  const client_secret = process.env.YOUTUBE_CLIENT_SECRET;
+
+  if (!client_id || !client_secret) {
+    return res.status(200).json({
+      isConfigured: false,
+      error: "Google/YouTube OAuth credentials are not configured on the server yet. Please add YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET to your .env file or deployment variables."
+    });
+  }
+
+  // Support secure dynamic redirects on current server address in any container
+  const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+  const scopes = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly openid email profile";
+
+  const stateObj = { source: "omnicast_engine" };
+  const stateB64 = Buffer.from(JSON.stringify(stateObj)).toString("base64");
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${stateB64}`;
+
+  res.json({
+    isConfigured: true,
+    url: authUrl
+  });
+});
+
 // API: Real Google OAuth callback handler to exchange code for YouTube token access
 app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
   const { code, state } = req.query;
