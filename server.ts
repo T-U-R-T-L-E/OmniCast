@@ -496,8 +496,8 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     // Dynamically retrieve the correct redirect URI representing either dev or preview container running host
     const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
 
-    console.log(`[Google OAuth]: Sending token exchange request to \${tokenUrl}`);
-    console.log(`[Google OAuth]: Redirect URI matched: \${redirectUri}`);
+    console.log(`[Google OAuth]: Sending token exchange request to ${tokenUrl}`);
+    console.log(`[Google OAuth]: Redirect URI matched: ${redirectUri}`);
 
     const tokenRes = await fetch(tokenUrl, {
       method: "POST",
@@ -524,7 +524,7 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     try {
       const channelRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
         headers: {
-          Authorization: `Bearer \${tokenData.access_token}`
+          Authorization: `Bearer ${tokenData.access_token}`
         }
       });
       const channelData: any = await channelRes.json();
@@ -553,10 +553,10 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800;">Google Authorized!</h2>
-            <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b; font-weight: 500; line-height:1.5;">Channel <strong>\${channelTitle}</strong> connected successfully. You can return to the Crosspost Desk.</p>
+            <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b; font-weight: 500; line-height:1.5;">Channel <strong>${channelTitle}</strong> connected successfully. You can return to the Crosspost Desk.</p>
             <script>
               if (window.opener) {
-                window.opener.postMessage(\${payload}, '*');
+                window.opener.postMessage(${payload}, '*');
                 window.close();
               } else {
                 window.location.href = '/';
@@ -575,7 +575,7 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
           <div style="background: white; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; max-width: 420px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
             <div style="color: #ef4444; font-size: 40px; margin-bottom: 12px;">⚠️</div>
             <h2 style="color: #dc2626; margin: 0 0 12px 0; font-size: 18px; font-weight:800;">Google Token Exchange Error</h2>
-            <pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 11px; border: 1px solid #e2e8f0; white-space: pre-wrap; font-family: monospace; text-align: left; max-height: 120px; overflow-y: auto;">\${err.message || String(err)}</pre>
+            <pre style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 11px; border: 1px solid #e2e8f0; white-space: pre-wrap; font-family: monospace; text-align: left; max-height: 120px; overflow-y: auto;">${err.message || String(err)}</pre>
             <button onclick="window.close()" style="background:#64748b; color:white; border:none; border-radius:8px; padding:10px 20px; font-weight:bold; cursor:pointer; margin-top:20px;">Close Window</button>
           </div>
         </body>
