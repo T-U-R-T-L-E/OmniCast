@@ -41,6 +41,8 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
   const [serverOauthReady, setServerOauthReady] = useState<boolean | null>(null);
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [copiedResponse, setCopiedResponse] = useState(false);
+  const [customClientId, setCustomClientId] = useState("");
+  const [customClientSecret, setCustomClientSecret] = useState("");
 
   // Scopes & Permissions lists by platform representing the secure consent screen
   const initialPermissions = {
@@ -152,12 +154,35 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
   };
 
   const triggerRealGoogleFlow = () => {
-    if (!oauthUrl) return;
+    let finalAuthUrl = oauthUrl;
+    
+    if (!serverOauthReady) {
+      if (!customClientId.trim() || !customClientSecret.trim()) {
+        setErrorText("Missing credentials: Type in your Client ID and Client Secret in the integration settings form below first.");
+        return;
+      }
+      
+      const redirectUri = `${window.location.origin}/api/auth/google/callback`;
+      const scopes = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly openid email profile";
+      
+      const stateObj = { 
+        source: "omnicast_engine",
+        client_id: customClientId.trim(),
+        client_secret: customClientSecret.trim()
+      };
+      
+      // safe base64 encoding
+      const stateB64 = btoa(unescape(encodeURIComponent(JSON.stringify(stateObj))));
+      
+      finalAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(customClientId.trim())}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${stateB64}`;
+    }
+
+    if (!finalAuthUrl) return;
     setErrorText(null);
     setIsVerifying(true);
 
     const authWindow = window.open(
-      oauthUrl,
+      finalAuthUrl,
       "google_oauth_popup",
       "width=600,height=700,status=no,resizable=yes,scrollbars=yes"
     );
@@ -299,9 +324,9 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
                   <>
                     {serverOauthReady === true ? (
                       <div className="space-y-3">
-                        <div className="bg-indigo-50/30 border border-indigo-100/80 rounded-xl p-3 text-[11px] text-indigo-850">
+                        <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 text-[11px] text-emerald-850">
                           <p className="font-semibold leading-relaxed">
-                            ✅ <strong>Ready for Live Connection:</strong> Master developer coordinates have been fully pre-configured in your workspace backend. End-users can link easily.
+                            ✅ <strong>Master Connection Ready:</strong> Server credentials are fully configured. Click below to sign in with your creator Google account.
                           </p>
                         </div>
 
@@ -314,11 +339,11 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
                           {isVerifying ? (
                             <>
                               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              <span>WAITING ON GOOGLE ACCESS GATEWAY...</span>
+                              <span>Redirecting to Google...</span>
                             </>
                           ) : (
                             <>
-                              <span>Authorize with Google Account</span>
+                              <span>Authorize Google Account</span>
                               <ExternalLink className="w-3.5 h-3.5" />
                             </>
                           )}
@@ -326,41 +351,81 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
                       </div>
                     ) : serverOauthReady === false ? (
                       <div className="space-y-4">
-                        {/* Prompt for developer Lewis explaining where to add credentials */}
-                        <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3.5 space-y-2 text-amber-900 text-xs shadow-3xs">
-                          <div className="flex gap-2 items-start font-bold">
-                            <Database className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                            <span>Developer Notice: Configure Google App Clients</span>
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3 text-xs text-slate-800 shadow-3xs">
+                          <div className="flex gap-2 items-center font-bold text-slate-900 text-left">
+                            <Database className="w-4 h-4 text-rose-600 shrink-0" />
+                            <span>Master Google OAuth Coordinates</span>
                           </div>
-                          <p className="leading-relaxed text-[11px] text-amber-800">
-                            Hi Lewis! Since you're of course the creator, you'll need to set up your master <strong className="text-amber-900">Google Cloud API project</strong> and add the values to your server's credentials space so users can perform living OAuth handshakes:
+                          
+                          <p className="leading-relaxed text-[11px] text-slate-500 font-medium text-left">
+                            To enable Google OAuth for this environment, register your Google Cloud Project. Copy the Redirect URI below, paste it in Google Console under <strong className="text-slate-700">Authorized Redirect URIs</strong>, then paste your Client ID and Client Secret:
                           </p>
-                          <div className="bg-white/80 border border-amber-300/40 p-2 rounded-lg space-y-1 font-mono text-[9px] text-slate-700 text-left">
-                            <div>1. Go to <span className="font-bold underline">Google Cloud Console</span> &gt; APIs & Credentials</div>
-                            <div>2. Set Redirect URI to:</div>
-                            <div className="bg-slate-100 p-1 rounded font-bold break-all select-all text-indigo-650">{getRedirectUri()}</div>
-                            <div className="pt-1 text-slate-400">3. Set env variables in .env file:</div>
-                            <div className="text-rose-700 font-bold">YOUTUBE_CLIENT_ID="..."<br />YOUTUBE_CLIENT_SECRET="..."</div>
+
+                          <div className="space-y-2 text-left">
+                            <div>
+                              <span className="text-[10px] uppercase font-black text-slate-450 block mb-1">Authorized Redirect URI</span>
+                              <div className="flex gap-1">
+                                <div className="bg-slate-100 px-2 py-1.5 rounded-lg font-mono text-[9px] text-slate-600 flex-1 break-all select-all border border-slate-200">
+                                  {getRedirectUri()}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(getRedirectUri());
+                                    setCopiedResponse(true);
+                                    setTimeout(() => setCopiedResponse(false), 2000);
+                                  }}
+                                  className="p-1 px-2 border border-slate-200 hover:bg-slate-100 rounded-lg text-[9px] font-black uppercase text-slate-600 shrink-0 cursor-pointer flex items-center justify-center gap-1 font-mono transition-all"
+                                >
+                                  {copiedResponse ? "Copied" : "Copy"}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2.5 pt-1">
+                              <div>
+                                <label className="text-[10px] uppercase font-black text-slate-450 block mb-1">Google OAuth Client ID</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 12345-abc123.apps.googleusercontent.com"
+                                  value={customClientId}
+                                  onChange={(e) => setCustomClientId(e.target.value)}
+                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-medium bg-white focus:outline-hidden focus:border-rose-500 transition-colors"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[10px] uppercase font-black text-slate-450 block mb-1">Google OAuth Client Secret</label>
+                                <input
+                                  type="password"
+                                  placeholder="••••••••••••••••••••"
+                                  value={customClientSecret}
+                                  onChange={(e) => setCustomClientSecret(e.target.value)}
+                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-medium bg-white focus:outline-hidden focus:border-rose-500 transition-colors"
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[10px] leading-relaxed text-amber-700 font-medium">
-                            Don't worry about getting blocked during local tests! You can run the live bypass link below to test the full video publisher sequence right now.
-                          </p>
                         </div>
 
-                        <div className="flex gap-2.5">
-                          <button
-                            type="button"
-                            onClick={handleSimulatedConnect}
-                            disabled={isVerifying}
-                            className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl shadow-md transition-all uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
-                          >
-                            {isVerifying ? (
+                        <button
+                          type="button"
+                          onClick={triggerRealGoogleFlow}
+                          disabled={isVerifying || !customClientId.trim() || !customClientSecret.trim()}
+                          className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-150 disabled:text-slate-400 disabled:shadow-none text-white text-xs font-black rounded-xl shadow-md transition-all uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed font-mono"
+                        >
+                          {isVerifying ? (
+                            <>
                               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <span>Instant Sandbox Connection</span>
-                            )}
-                          </button>
-                        </div>
+                              <span>Verifying connection...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Link Live YouTube Channel</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
                       </div>
                     ) : (
                       <div className="flex justify-center py-4">
