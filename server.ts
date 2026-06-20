@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -683,7 +684,12 @@ app.post("/api/publish", async (req: Request, res: Response) => {
 
 // Implement Vite middleware for development context
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const isProductionDevOverride = 
+    process.env.NODE_ENV === "production" || 
+    !fs.existsSync(path.join(process.cwd(), "vite.config.ts"));
+
+  if (!isProductionDevOverride) {
+    console.log("[Omni-Cast Boot]: Running in DEVELOPMENT mode with Vite dev middleware.");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -691,15 +697,24 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // Serve production static assets from the 'dist' folder
+    console.log("[Omni-Cast Boot]: Running in PRODUCTION mode with static file delivery.");
     const distPath = path.join(process.cwd(), "dist");
+    
+    // Serve physical static assets
     app.use(express.static(distPath));
+    
+    // THE CRITICAL FIX: Catch-all wildcard route to handle client-side deep routing and browser refreshes
     app.get("*", (req: Request, res: Response) => {
+      // If it looks like an API route, do not send index.html SPA fallback
+      if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "API endpoint not found" });
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server is running at http://0.0.0.0:${PORT} in ${process.env.NODE_ENV || "development"} mode.`);
+    console.log(`Server is running at http://0.0.0.0:${PORT} in ${isProductionDevOverride ? "production" : "development"} mode.`);
   });
 }
 

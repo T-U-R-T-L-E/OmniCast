@@ -1,6 +1,9 @@
 node_modules/
 build/
 dist/
+.next/
+.vscode/
+.idea/
 coverage/
 .DS_Store
 *.log
