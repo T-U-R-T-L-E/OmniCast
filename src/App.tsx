@@ -1928,10 +1928,10 @@ export default function App() {
             {accounts.map(a => (
               <img
                 key={a.id}
-                src={a.avatarUrl}
-                alt={a.username}
+                src={a.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"}
+                alt={a.username || a.platform}
                 className={`w-7.5 h-7.5 rounded-full ring-2 ring-white object-cover ${a.connected ? "opacity-100" : "opacity-30"}`}
-                title={`${a.platform}: ${a.username}`}
+                title={`${a.platform}: ${a.username || "Not Connected"}`}
               />
             ))}
           </div>
@@ -3668,7 +3668,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                     return (
                       <div key={acc.id} className="flex items-center justify-between p-2.5 border border-slate-100 rounded-lg bg-slate-50/20 text-xs text-slate-700">
                         <div className="flex items-center gap-2">
-                          <img src={acc.avatarUrl} alt={acc.username} className="w-6 h-6 rounded-full ring-1 ring-slate-200 object-cover" />
+                          <img src={acc.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} alt={acc.username || acc.platform} className="w-6 h-6 rounded-full ring-1 ring-slate-200 object-cover" />
                           <div>
                             <span className="font-extrabold text-[11px] block text-slate-800 uppercase">{acc.platform.replace("_shorts", "").toUpperCase()}</span>
                             <span className="text-[9.5px] text-slate-450 font-mono">{isConnected ? acc.username : "Connection inactive"}</span>
@@ -4553,7 +4553,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                           {/* Profile Circle with micro Red Plus badge */}
                           <div className="relative">
                             <div className="w-8.5 h-8.5 rounded-full border border-white/60 bg-slate-350 overflow-hidden shadow-md">
-                              <img src={getAccountForPlatform("tiktok")?.avatarUrl} alt="TikTok profile clip avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={getAccountForPlatform("tiktok")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} alt="TikTok profile clip avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-[#FE2C55] hover:bg-[#E11D48] rounded-full flex items-center justify-center text-white text-[9px] font-black shadow-md select-none">
                               +
@@ -4595,7 +4595,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                           {/* Spinning disk track avatar */}
                           <div className="w-7 h-7 rounded-full bg-zinc-950 ring-2 ring-zinc-750/70 flex items-center justify-center mt-1 animate-spin" style={{ animationDuration: "5s" }}>
                             <div className="w-4 h-4 rounded-full border border-black overflow-hidden">
-                              <img src={getAccountForPlatform("tiktok")?.avatarUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={getAccountForPlatform("tiktok")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                           </div>
                         </div>
@@ -4662,7 +4662,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
                           {/* Music album cover */}
                           <div className="w-6 h-6 rounded border border-white/70 overflow-hidden bg-slate-900 flex items-center justify-center animate-spin" style={{ animationDuration: "8s" }}>
-                            <img src={getAccountForPlatform("instagram")?.avatarUrl} alt="music disk cover" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <img src={getAccountForPlatform("instagram")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} alt="music disk cover" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         </div>
 
@@ -4672,7 +4672,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                           {/* Account Line */}
                           <div className="flex items-center space-x-1.5 pt-1">
                             <div className="w-6.5 h-6.5 rounded-full border border-white/60 overflow-hidden shrink-0 ring-1 ring-pink-500">
-                              <img src={getAccountForPlatform("instagram")?.avatarUrl} alt="insta profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={getAccountForPlatform("instagram")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} alt="insta profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                             <span className="font-extrabold text-[10.5px] text-white tracking-wide truncate max-w-[100px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
                               {getAccountForPlatform("instagram")?.username.replace("@", "") || "instagram_reels"}
@@ -4734,7 +4734,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
                           {/* Corner avatar disk */}
                           <div className="w-6.5 h-6.5 rounded-full border border-white/60 overflow-hidden">
-                            <img src={getAccountForPlatform("facebook")?.avatarUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <img src={getAccountForPlatform("facebook")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         </div>
 
@@ -4744,7 +4744,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                           {/* Profile row */}
                           <div className="flex items-center space-x-1.5">
                             <div className="w-7 h-7 rounded-full border border-white/50 bg-slate-400 overflow-hidden shrink-0">
-                              <img src={getAccountForPlatform("facebook")?.avatarUrl} alt="facebook avatar details" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={getAccountForPlatform("facebook")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} alt="facebook avatar details" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                             <div>
                               <span className="font-extrabold text-[10.5px] text-white block leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
@@ -4827,7 +4827,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
                           {/* Music square disk artwork */}
                           <div className="w-6.5 h-6.5 bg-rose-500 rounded border border-white overflow-hidden ring-1 ring-rose-350">
-                            <img src={getAccountForPlatform("youtube_shorts")?.avatarUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            <img src={getAccountForPlatform("youtube_shorts")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                           </div>
                         </div>
 
@@ -4837,7 +4837,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                           {/* Profile details */}
                           <div className="flex items-center space-x-2 pt-1 border-t border-white/5 bg-black/5 rounded">
                             <div className="w-6.5 h-6.5 rounded-full border border-white bg-slate-400 overflow-hidden shrink-0">
-                              <img src={getAccountForPlatform("youtube_shorts")?.avatarUrl} alt="YouTube avatar Shorts" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={getAccountForPlatform("youtube_shorts")?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=120"} alt="YouTube avatar Shorts" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                             <span className="font-extrabold text-[10.5px] text-white tracking-wide truncate max-w-[85px] drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]">
                               @{getAccountForPlatform("youtube_shorts")?.username || "youtube_shorts"}
@@ -5501,7 +5501,7 @@ META_APP_SECRET=your_meta_app_secret_here`}
                       className={`border rounded-xl p-4 flex gap-4 hover:border-slate-300 transition-all relative overflow-hidden ${camp.status === "queued" ? "bg-amber-50/15 border-amber-200/60" : "bg-slate-50/50 border-slate-200"}`}
                     >
                       <div className="w-16 h-20 bg-slate-200 rounded overflow-hidden relative shrink-0">
-                        <img src={camp.thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                        <img src={camp.thumbnailUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400"} alt="Thumbnail" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
                           {camp.status === "queued" ? (
                             <Clock className="w-4 h-4 text-amber-400 stroke-[2.5]" />
