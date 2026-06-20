@@ -528,9 +528,9 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                 </div>
                 <p className="text-[10px] text-slate-450 font-semibold text-center mt-2 leading-relaxed max-w-xs mx-auto">
                   By choosing to sign up or log in with Google or Apple, you agree and consent to our{" "}
-                  <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Terms of Service</a>
+                  <button type="button" onClick={() => setAuthModalView("terms")} className="text-indigo-605 hover:text-indigo-750 font-extrabold hover:underline cursor-pointer bg-transparent border-none p-0 inline">Terms of Service</button>
                   {" "}and{" "}
-                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Privacy Policy</a>.
+                  <button type="button" onClick={() => setAuthModalView("privacy")} className="text-indigo-605 hover:text-indigo-750 font-extrabold hover:underline cursor-pointer bg-transparent border-none p-0 inline">Privacy Policy</button>.
                 </p>
               </div>
 
@@ -736,9 +736,9 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                 </div>
                 <p className="text-[10px] text-slate-450 font-semibold text-center mt-2 leading-relaxed max-w-xs mx-auto">
                   By choosing to sign up or log in with Google or Apple, you agree and consent to our{" "}
-                  <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Terms of Service</a>
+                  <button type="button" onClick={() => setAuthModalView("terms")} className="text-indigo-605 hover:text-indigo-750 font-extrabold hover:underline cursor-pointer bg-transparent border-none p-0 inline">Terms of Service</button>
                   {" "}and{" "}
-                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-750 font-bold hover:underline cursor-pointer">Privacy Policy</a>.
+                  <button type="button" onClick={() => setAuthModalView("privacy")} className="text-indigo-605 hover:text-indigo-750 font-extrabold hover:underline cursor-pointer bg-transparent border-none p-0 inline">Privacy Policy</button>.
                 </p>
               </div>
 
@@ -980,23 +980,21 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
         <div className="mt-6 flex items-center justify-center space-x-3 text-[11px] text-slate-400 font-semibold select-none">
           <span className="font-black text-slate-600 tracking-wider">OmniCast</span>
           <span>•</span>
-          <a
-            href="/terms-of-service"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline"
+          <button
+            type="button"
+            onClick={() => setAuthModalView("terms")}
+            className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline bg-transparent border-none p-0"
           >
             Terms of Service
-          </a>
+          </button>
           <span>•</span>
-          <a
-            href="/privacy-policy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline"
+          <button
+            type="button"
+            onClick={() => setAuthModalView("privacy")}
+            className="hover:text-indigo-600 transition-colors cursor-pointer font-bold hover:underline bg-transparent border-none p-0"
           >
             Privacy Policy
-          </a>
+          </button>
         </div>
       </div>
 

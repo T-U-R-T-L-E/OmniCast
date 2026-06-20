@@ -5464,23 +5464,25 @@ META_APP_SECRET=your_meta_app_secret_here`}
               <span>© {new Date().getFullYear()} OmniCast. All rights reserved.</span>
             </div>
             <div className="flex items-center space-x-4 animate-pulse-slow">
-              <a 
-                href="/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+              <button 
+                onClick={() => {
+                  setActivePage("terms");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }} 
+                className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 Terms of Service
-              </a>
+              </button>
               <span>•</span>
-              <a 
-                href="/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer"
+              <button 
+                onClick={() => {
+                  setActivePage("privacy");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }} 
+                className="font-semibold text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer bg-transparent border-none p-0"
               >
                 Privacy Policy
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -5827,25 +5829,29 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
               {/* Mobile Legal Links */}
               <div className="flex items-center justify-center gap-5 text-xs font-bold text-slate-400 mb-5 relative shrink-0">
-                <a
-                  href="/terms-of-service"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setIsMobileMoreOpen(false)}
-                  className="hover:text-indigo-600 hover:underline transition-all cursor-pointer text-[11px]"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("terms");
+                    setIsMobileMoreOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="hover:text-indigo-600 hover:underline transition-all cursor-pointer text-[11px] bg-transparent border-none p-0"
                 >
                   Terms of Service
-                </a>
+                </button>
                 <span className="text-slate-300 pointer-events-none">•</span>
-                <a
-                  href="/privacy-policy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setIsMobileMoreOpen(false)}
-                  className="hover:text-indigo-600 hover:underline transition-all cursor-pointer text-[11px]"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePage("privacy");
+                    setIsMobileMoreOpen(false);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="hover:text-indigo-600 hover:underline transition-all cursor-pointer text-[11px] bg-transparent border-none p-0"
                 >
                   Privacy Policy
-                </a>
+                </button>
               </div>
 
               {/* Sign out */}
