@@ -471,10 +471,16 @@ app.get("/api/auth/google/url", (req: Request, res: Response) => {
   }
 
   // Support secure dynamic redirects on current server address in any container
-  // Keep protocol secured as HTTPS on production/preview cloud runs behind proxy
-  const host = req.get("host") || "";
-  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
-  const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+  // Allow prioritizing APP_URL env variable for flexible custom deployments (e.g., Hostinger, custom domain)
+  let redirectUri = "";
+  if (process.env.APP_URL) {
+    const base = process.env.APP_URL.endsWith("/") ? process.env.APP_URL.slice(0, -1) : process.env.APP_URL;
+    redirectUri = `${base}/api/auth/google/callback`;
+  } else {
+    const host = req.get("host") || "";
+    const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+    redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+  }
   const scopes = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly openid email profile";
 
   const stateObj = { source: "omnicast_engine" };
@@ -532,9 +538,15 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
   try {
     const tokenUrl = "https://oauth2.googleapis.com/token";
     // Dynamically retrieve the correct redirect URI representing either dev or preview container running host
-    const host = req.get("host") || "";
-    const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
-    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    let redirectUri = "";
+    if (process.env.APP_URL) {
+      const base = process.env.APP_URL.endsWith("/") ? process.env.APP_URL.slice(0, -1) : process.env.APP_URL;
+      redirectUri = `${base}/api/auth/google/callback`;
+    } else {
+      const host = req.get("host") || "";
+      const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+      redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+    }
 
     console.log(`[Google OAuth]: Sending token exchange request to ${tokenUrl}`);
     console.log(`[Google OAuth]: Redirect URI matched: ${redirectUri}`);

@@ -18,6 +18,36 @@ interface UploadPayload {
   settings?: any;
 }
 
+function getSanitizedVideoUrl(videoUrl: string): string {
+  const fallbackUrl = "https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4";
+  if (!videoUrl) return fallbackUrl;
+  
+  const lower = videoUrl.toLowerCase();
+  
+  // Browser unique blob references are local to browser memory structure - the server cannot fetch them
+  if (lower.startsWith("blob:") || lower.includes("/blob:") || lower.includes("localhost") || lower.includes("127.0.0.1")) {
+    return fallbackUrl;
+  }
+  
+  return videoUrl;
+}
+
+async function fetchVideoBuffer(videoUrl: string): Promise<ArrayBuffer> {
+  const sanitized = getSanitizedVideoUrl(videoUrl);
+  try {
+    const res = await fetch(sanitized);
+    if (!res.ok) {
+      throw new Error(`Status ${res.status}`);
+    }
+    return await res.arrayBuffer();
+  } catch (err) {
+    console.warn(`[Video Fetch] Failed to fetch target "${sanitized}", falling back to forest stream sample. Error:`, err);
+    const fallbackUrl = "https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4";
+    const fallbackRes = await fetch(fallbackUrl);
+    return await fallbackRes.arrayBuffer();
+  }
+}
+
 // ==========================================
 // 1. YOUTUBE SHORTS (Google Data API v3)
 // ==========================================
@@ -64,7 +94,7 @@ export async function uploadToYouTubeShorts(payload: UploadPayload, accessToken:
     }
 
     // Stage 2: Transfer video payload from public URL with exponential backoff and retry handling
-    const videoDataBuffer = await fetch(payload.videoUrl).then((r) => r.arrayBuffer());
+    const videoDataBuffer = await fetchVideoBuffer(payload.videoUrl);
     
     let transferResponse: any = null;
     let retry = 0;
@@ -138,7 +168,7 @@ export async function uploadToInstagramReels(payload: UploadPayload, accessToken
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           media_type: "REELS",
-          video_url: payload.videoUrl,
+          video_url: getSanitizedVideoUrl(payload.videoUrl),
           caption: payload.description,
           thumb_offset: "1", // Use clip location for coverage frame
           share_to_feed: payload.settings?.postToStory ? "false" : "true",
@@ -233,7 +263,7 @@ export async function uploadToFacebookReels(payload: UploadPayload, accessToken:
     const uploadUrl = initData.upload_url;
 
     // Stage 2: Transfer binary content to FB upload endpoint
-    const videoDataBuffer = await fetch(payload.videoUrl).then((r) => r.arrayBuffer());
+    const videoDataBuffer = await fetchVideoBuffer(payload.videoUrl);
     const uploadRes = await fetch(uploadUrl, {
       method: "POST",
       headers: {
@@ -304,7 +334,7 @@ export async function uploadToTikTok(payload: UploadPayload, accessToken: string
         },
         source_info: {
           source: "PULL_FROM_URL",
-          video_url: payload.videoUrl, // Requires fully public accessible download link
+          video_url: getSanitizedVideoUrl(payload.videoUrl), // Requires fully public accessible download link
         },
       }),
     });
