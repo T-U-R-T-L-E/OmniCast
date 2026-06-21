@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import { ConnectedAccount, OptimizedResult, CrossPost, PublishingStep, MediaLibraryItem, UserProfile, ApiKey } from "./types";
 import { ConnectedAccounts } from "./components/ConnectedAccounts";
+import { PlatformLinkModal } from "./components/PlatformLinkModal";
 import { Presets, PresetVideo } from "./components/Presets";
 import { Confetti } from "./components/Confetti";
 import { MediaLibrary } from "./components/MediaLibrary";
@@ -169,6 +170,7 @@ export default function App() {
   // Config & state
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean>(true);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(DEFAULT_ACCOUNTS);
+  const [manualLinkingPlatform, setManualLinkingPlatform] = useState<any | null>(null);
   
   // Active Authenticated user state
   const [authedUser, setAuthedUser] = useState<FirebaseUser | null>(null);
@@ -4349,140 +4351,201 @@ META_APP_SECRET=your_meta_app_secret_here`}
               )}
 
               {/* YouTube Shorts */}
-              {activePlatformPreview === "youtube_shorts" && previewSubTab === "config" && (
-                <div className="space-y-4 flex-1 flex flex-col justify-between" id="youtube-settings-container">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-extrabold font-sans text-sm text-slate-800 tracking-tight">YouTube Shorts Config</span>
-                        <span className="text-[10px] text-slate-405 font-mono">Title & Description Limits</span>
+              {activePlatformPreview === "youtube_shorts" && previewSubTab === "config" && (() => {
+                const ytAccount = getAccountForPlatform("youtube_shorts");
+                const isConnected = ytAccount?.connected ?? false;
+                return (
+                  <div className="space-y-4 flex-1 flex flex-col justify-between" id="youtube-settings-container">
+                    <div className="space-y-4">
+                      {/* Interactive Connection Status Block */}
+                      {isConnected ? (
+                        <div className="flex items-center justify-between p-3.5 bg-emerald-50/70 border border-emerald-150 rounded-xl shadow-xs">
+                          <div className="flex items-center gap-3">
+                            {ytAccount?.avatarUrl ? (
+                              <img src={ytAccount.avatarUrl} alt="YouTube avatar Detail" className="w-8.5 h-8.5 rounded-full object-cover border-2 border-emerald-500 p-0.5" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="w-8.5 h-8.5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-extrabold text-xs">YT</div>
+                            )}
+                            <div className="text-left">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-bold text-slate-850">@{ytAccount?.username || "YouTube Channel"}</p>
+                                <span className="text-[8px] tracking-wide uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-white leading-none">Active</span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 font-medium">OAuth integration active & ready for crossposting</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setManualLinkingPlatform(ytAccount)}
+                            className="text-[10px] font-sans font-black tracking-wider uppercase text-red-650 hover:text-red-800 transition-colors cursor-pointer"
+                          >
+                            Reconnect
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-2xl p-5 text-center space-y-3.5 shadow-xs">
+                          <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center mx-auto text-red-650 border border-red-200">
+                            <Youtube className="w-5 h-5 stroke-[2]" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="text-xs font-extrabold text-slate-850 uppercase tracking-widest font-sans">Channel Connection Required</h4>
+                            <p className="text-[11px] text-slate-550 leading-relaxed font-semibold max-w-sm mx-auto">
+                              Authorized YouTube distribution is inactive. Link your YouTube creator channel securely via Google's OAuth workspace before publishing.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const targetAcc = accounts.find(a => a.platform === "youtube_shorts") || {
+                                id: "acc-youtube",
+                                platform: "youtube_shorts",
+                                username: "",
+                                avatarUrl: "",
+                                connected: false,
+                                status: "not_connected"
+                              };
+                              setManualLinkingPlatform(targetAcc);
+                            }}
+                            className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-xl shadow-sm hover:shadow-md transition-all uppercase tracking-wider inline-flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>Link YouTube Channel</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-extrabold font-sans text-sm text-slate-800 tracking-tight">YouTube Shorts Config</span>
+                          <span className="text-[10px] text-slate-405 font-mono">Title & Description Limits</span>
+                        </div>
+                        <span className={`text-[10px] font-mono transition-colors duration-200 ${customCaptions.youtube_title.length === 100 ? "text-rose-600 font-extrabold" : "text-slate-400"}`}>
+                          Title: {customCaptions.youtube_title.length} / 100 chars
+                        </span>
                       </div>
-                      <span className={`text-[10px] font-mono transition-colors duration-200 ${customCaptions.youtube_title.length === 100 ? "text-rose-600 font-extrabold" : "text-slate-400"}`}>
-                        Title: {customCaptions.youtube_title.length} / 100 chars
-                      </span>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Title (Required)</label>
+                          <input
+                            type="text"
+                            maxLength={100}
+                            id="youtube-title-input"
+                            value={customCaptions.youtube_title}
+                            onChange={(e) => setCustomCaptions({ ...customCaptions, youtube_title: e.target.value })}
+                            className={`w-full text-xs font-bold bg-slate-50 border rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
+                              customCaptions.youtube_title.length >= 100 
+                                ? "text-rose-600 border-rose-300 focus:border-rose-500" 
+                                : "text-slate-800 border-slate-200"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Description</label>
+                          <textarea
+                            rows={3}
+                            id="youtube-desc-input"
+                            value={customCaptions.youtube_desc}
+                            onChange={(e) => setCustomCaptions({ ...customCaptions, youtube_desc: e.target.value })}
+                            className={`w-full text-xs bg-slate-50 border rounded-xl p-3 focus:outline-none focus:border-blue-500 font-sans leading-relaxed resize-none font-medium transition-colors ${
+                              customCaptions.youtube_desc.length > 5000 
+                                ? "text-rose-600 border-rose-300 focus:border-rose-500 font-bold bg-rose-50/5" 
+                                : "text-slate-700 border-slate-200"
+                            }`}
+                          />
+                          {renderCharacterLimitBar(customCaptions.youtube_desc.length, 5000)}
+                        </div>
+
+                        {/* Save or publish dropdown & Visibility dropdown */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Save or publish */}
+                          <div className="bg-slate-50/65 border border-slate-200 rounded-xl p-2 px-3 space-y-1">
+                            <label className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider block">Save or Publish</label>
+                            <select
+                              id="youtube-save-or-publish"
+                              value={youtubeSettings.saveOrPublish}
+                              onChange={(e) => setYoutubeSettings({ ...youtubeSettings, saveOrPublish: e.target.value })}
+                              className="w-full bg-white text-xs text-slate-700 border border-slate-200 rounded-lg p-1.5 focus:outline-none focus:border-blue-500 font-semibold"
+                            >
+                              <option value="publish">Publish now</option>
+                              <option value="draft">Save as draft</option>
+                            </select>
+                          </div>
+
+                          {/* Visibility (Make your video public, unlisted, or private) */}
+                          <div className="bg-slate-50/65 border border-slate-200 rounded-xl p-2 px-3 space-y-1">
+                            <label className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider block">Visibility option</label>
+                            <select
+                              id="youtube-visibility-select"
+                              value={youtubeSettings.visibility}
+                              onChange={(e) => setYoutubeSettings({ ...youtubeSettings, visibility: e.target.value })}
+                              className="w-full bg-white text-xs text-slate-700 border border-slate-200 rounded-lg p-1.5 focus:outline-none focus:border-blue-500 font-semibold"
+                            >
+                              <option value="public">Public</option>
+                              <option value="unlisted">Unlisted</option>
+                              <option value="private">Private</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Explanatory dynamic banner about specific option settings */}
+                        <div className="text-[10px] text-blue-900 bg-blue-50/65 p-3.5 border border-blue-100 rounded-xl space-y-0.5">
+                          <p className="font-bold text-slate-700">Dynamic Visibility Guide</p>
+                          {youtubeSettings.visibility === "private" && (
+                            <p className="font-medium">🔒 <strong>Private Only:</strong> Only you and people you choose can watch your video.</p>
+                          )}
+                          {youtubeSettings.visibility === "unlisted" && (
+                            <p className="font-medium">🔗 <strong>Unlisted:</strong> Anyone with the video link can watch your video.</p>
+                          )}
+                          {youtubeSettings.visibility === "public" && (
+                            <p className="font-medium">🌍 <strong>Public:</strong> Everyone can watch your video.</p>
+                          )}
+                        </div>
+
+                        {/* Thumbnail frame selector */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Select Video Thumbnail Cover</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {getAlternativeCovers().map((img, i) => {
+                              const isSelected = youtubeSettings.coverUrl === img;
+                              return (
+                                <button
+                                  key={i}
+                                  id={`youtube-cover-frame-${i}`}
+                                  type="button"
+                                  onClick={() => setYoutubeSettings({ ...youtubeSettings, coverUrl: img })}
+                                  className={`relative aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all group cursor-pointer ${
+                                    isSelected ? "border-blue-600 ring-2 ring-blue-150 scale-[1.02]" : "border-slate-200 hover:border-slate-300"
+                                  }`}
+                                >
+                                  <img src={img} alt={`YouTube Frame ${i+1}`} className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/25" />
+                                  {isSelected && (
+                                    <div className="absolute top-1 right-1 bg-blue-600 text-white p-0.5 rounded-full shadow-sm">
+                                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                    </div>
+                                  )}
+                                  <span className="absolute bottom-1 left-15/2 -translate-x-1/2 bg-black/75 text-white text-[8px] font-mono px-1 py-0.2 rounded scale-90">
+                                    FRAME {i+1}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Title (Required)</label>
-                        <input
-                          type="text"
-                          maxLength={100}
-                          id="youtube-title-input"
-                          value={customCaptions.youtube_title}
-                          onChange={(e) => setCustomCaptions({ ...customCaptions, youtube_title: e.target.value })}
-                          className={`w-full text-xs font-bold bg-slate-50 border rounded-lg p-2.5 focus:outline-none focus:border-blue-500 transition-colors ${
-                            customCaptions.youtube_title.length >= 100 
-                              ? "text-rose-600 border-rose-300 focus:border-rose-500" 
-                              : "text-slate-800 border-slate-200"
-                          }`}
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Description</label>
-                        <textarea
-                          rows={3}
-                          id="youtube-desc-input"
-                          value={customCaptions.youtube_desc}
-                          onChange={(e) => setCustomCaptions({ ...customCaptions, youtube_desc: e.target.value })}
-                          className={`w-full text-xs bg-slate-50 border rounded-xl p-3 focus:outline-none focus:border-blue-500 font-sans leading-relaxed resize-none font-medium transition-colors ${
-                            customCaptions.youtube_desc.length > 5000 
-                              ? "text-rose-600 border-rose-300 focus:border-rose-500 font-bold bg-rose-50/5" 
-                              : "text-slate-700 border-slate-200"
-                          }`}
-                        />
-                        {renderCharacterLimitBar(customCaptions.youtube_desc.length, 5000)}
-                      </div>
-
-                      {/* Save or publish dropdown & Visibility dropdown */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Save or publish */}
-                        <div className="bg-slate-50/65 border border-slate-200 rounded-xl p-2 px-3 space-y-1">
-                          <label className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider block">Save or Publish</label>
-                          <select
-                            id="youtube-save-or-publish"
-                            value={youtubeSettings.saveOrPublish}
-                            onChange={(e) => setYoutubeSettings({ ...youtubeSettings, saveOrPublish: e.target.value })}
-                            className="w-full bg-white text-xs text-slate-700 border border-slate-200 rounded-lg p-1.5 focus:outline-none focus:border-blue-500 font-semibold"
-                          >
-                            <option value="publish">Publish now</option>
-                            <option value="draft">Save as draft</option>
-                          </select>
-                        </div>
-
-                        {/* Visibility (Make your video public, unlisted, or private) */}
-                        <div className="bg-slate-50/65 border border-slate-200 rounded-xl p-2 px-3 space-y-1">
-                          <label className="text-[9px] uppercase font-extrabold text-slate-400 tracking-wider block">Visibility option</label>
-                          <select
-                            id="youtube-visibility-select"
-                            value={youtubeSettings.visibility}
-                            onChange={(e) => setYoutubeSettings({ ...youtubeSettings, visibility: e.target.value })}
-                            className="w-full bg-white text-xs text-slate-700 border border-slate-200 rounded-lg p-1.5 focus:outline-none focus:border-blue-500 font-semibold"
-                          >
-                            <option value="public">Public</option>
-                            <option value="unlisted">Unlisted</option>
-                            <option value="private">Private</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Explanatory dynamic banner about specific option settings */}
-                      <div className="text-[10px] text-blue-900 bg-blue-50/65 p-3.5 border border-blue-100 rounded-xl space-y-0.5">
-                        <p className="font-bold text-slate-700">Dynamic Visibility Guide</p>
-                        {youtubeSettings.visibility === "private" && (
-                          <p className="font-medium">🔒 <strong>Private Only:</strong> Only you and people you choose can watch your video.</p>
-                        )}
-                        {youtubeSettings.visibility === "unlisted" && (
-                          <p className="font-medium">🔗 <strong>Unlisted:</strong> Anyone with the video link can watch your video.</p>
-                        )}
-                        {youtubeSettings.visibility === "public" && (
-                          <p className="font-medium">🌍 <strong>Public:</strong> Everyone can watch your video.</p>
-                        )}
-                      </div>
-
-                      {/* Thumbnail frame selector */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Select Video Thumbnail Cover</label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {getAlternativeCovers().map((img, i) => {
-                            const isSelected = youtubeSettings.coverUrl === img;
-                            return (
-                              <button
-                                key={i}
-                                id={`youtube-cover-frame-${i}`}
-                                type="button"
-                                onClick={() => setYoutubeSettings({ ...youtubeSettings, coverUrl: img })}
-                                className={`relative aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all group cursor-pointer ${
-                                  isSelected ? "border-blue-600 ring-2 ring-blue-150 scale-[1.02]" : "border-slate-200 hover:border-slate-300"
-                                }`}
-                              >
-                                <img src={img} alt={`YouTube Frame ${i+1}`} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/25" />
-                                {isSelected && (
-                                  <div className="absolute top-1 right-1 bg-blue-600 text-white p-0.5 rounded-full shadow-sm">
-                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
-                                  </div>
-                                )}
-                                <span className="absolute bottom-1 left-15/2 -translate-x-1/2 bg-black/75 text-white text-[8px] font-mono px-1 py-0.2 rounded scale-90">
-                                  FRAME {i+1}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                    <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-150 space-y-1 text-xs">
+                      <p className="font-bold text-slate-700">YouTube Rule Verification</p>
+                      <p className="text-slate-500 leading-normal">
+                        Mode: <span className="font-bold text-slate-800 font-mono text-[11px] capitalize">{youtubeSettings.saveOrPublish}</span> • Visibility: <span className="font-bold text-slate-800 font-mono text-[11px] capitalize">{youtubeSettings.visibility}</span>.
+                      </p>
                     </div>
                   </div>
-
-                  <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-150 space-y-1 text-xs">
-                    <p className="font-bold text-slate-700">YouTube Rule Verification</p>
-                    <p className="text-slate-500 leading-normal">
-                      Mode: <span className="font-bold text-slate-800 font-mono text-[11px] capitalize">{youtubeSettings.saveOrPublish}</span> • Visibility: <span className="font-bold text-slate-800 font-mono text-[11px] capitalize">{youtubeSettings.visibility}</span>.
-                    </p>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Actual Feed Mobile Device Live Simulator */}
               {activePlatformPreview !== "bulk_edit" && previewSubTab === "feed" && (
@@ -5434,6 +5497,18 @@ META_APP_SECRET=your_meta_app_secret_here`}
 
           </div>
         </div>
+      )}
+
+      {manualLinkingPlatform && (
+        <PlatformLinkModal
+          isOpen={!!manualLinkingPlatform}
+          onClose={() => setManualLinkingPlatform(null)}
+          platformId={manualLinkingPlatform.id}
+          platformName={manualLinkingPlatform.platform}
+          onCompleteLink={(id, username, token, avatarUrl) => {
+            handleCompleteAccountLink(id, username, token, avatarUrl);
+          }}
+        />
       )}
 
       {/* Success Modal */}
