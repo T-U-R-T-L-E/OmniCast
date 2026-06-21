@@ -308,8 +308,27 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
                     )}
                   </button>
                   <p className="text-[10px] text-slate-450 font-semibold leading-relaxed">
-                    🔒 Secure OAuth Handshake. The login window closes automatically.
+                    🔒 Secure OAuth Handshake. Note: Real authorization requires this deployment URL to be registered in your Google Developer Console as an Authorized Redirect URI.
                   </p>
+
+                  <div className="relative flex py-1.5 items-center">
+                    <div className="flex-grow border-t border-slate-150"></div>
+                    <span className="flex-shrink mx-3 text-[9px] font-mono text-slate-405 font-black uppercase">Or Testing Fallback</span>
+                    <div className="flex-grow border-t border-slate-150"></div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSimulatedConnect}
+                    disabled={isVerifying}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl shadow-md hover:shadow-lg transition-all uppercase tracking-wider inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 font-mono"
+                  >
+                    {isVerifying ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <span>Sandbox Connection (Simulated)</span>
+                    )}
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
