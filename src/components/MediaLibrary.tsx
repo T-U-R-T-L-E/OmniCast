@@ -265,7 +265,13 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-9 h-11 bg-slate-100 rounded overflow-hidden shrink-0 relative border border-slate-200 flex items-center justify-center">
-                      <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
+                      {item.thumbnail ? (
+                        <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400 text-[10px] font-black uppercase">
+                          {item.type === "image" ? "IMG" : "VID"}
+                        </div>
+                      )}
                       {item.type === "video" && (
                         <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                           <Play className="w-2.5 h-2.5 text-white fill-white" />
@@ -413,8 +419,14 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     </div>
                   ) : hasVideo ? (
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-150 p-1.5 rounded-lg relative group">
-                      <div className="w-6 h-8 bg-slate-200 rounded overflow-hidden shrink-0 relative border border-slate-300">
-                        <img src={hasVideo.thumbnail} alt="" className="w-full h-full object-cover" />
+                      <div className="w-6 h-8 bg-slate-200 rounded overflow-hidden shrink-0 relative border border-slate-300 flex items-center justify-center">
+                        {hasVideo.thumbnail ? (
+                          <img src={hasVideo.thumbnail} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] font-black uppercase text-slate-400">
+                            MIN
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[9px] font-bold text-slate-700 truncate" title={hasVideo.name}>

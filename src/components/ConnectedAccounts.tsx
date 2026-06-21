@@ -128,13 +128,21 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
               <div className="flex items-start justify-between mt-1">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <img
-                      src={acc.avatarUrl}
-                      alt={acc.username}
-                      className={`w-10 h-10 rounded-full object-cover border-2 p-0.5 ${
+                    {acc.avatarUrl ? (
+                      <img
+                        src={acc.avatarUrl}
+                        alt={acc.username || acc.platform}
+                        className={`w-10 h-10 rounded-full object-cover border-2 p-0.5 ${
+                          acc.connected ? "border-emerald-500" : "border-slate-250"
+                        }`}
+                      />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-extrabold text-xs border-2 uppercase bg-slate-100 text-slate-600 ${
                         acc.connected ? "border-emerald-500" : "border-slate-250"
-                      }`}
-                    />
+                      }`}>
+                        {acc.platform.substring(0, 2)}
+                      </div>
+                    )}
                     <div
                       className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
                         acc.connected ? "bg-emerald-500" : "bg-slate-300"

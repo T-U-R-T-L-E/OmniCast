@@ -14,9 +14,6 @@ import {
 } from "lucide-react";
 
 // Master Google Cloud Platform placeholder
-const DEFAULT_YOUTUBE_CLIENT_ID = "";
-const DEFAULT_YOUTUBE_CLIENT_SECRET = "";
-
 interface PlatformLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
