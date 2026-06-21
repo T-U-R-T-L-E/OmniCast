@@ -46,6 +46,56 @@ app.get("/api/config", (req: Request, res: Response) => {
   });
 });
 
+// Serve physical uploaded files in both dev and production contexts
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
+// API: Handle raw file uploads (videos/images) without third-party form-data parsers (highly portable)
+app.post("/api/upload", express.raw({ type: "*/*", limit: "150mb" }), (req: Request, res: Response) => {
+  const filenameHeader = req.headers["x-filename"] || "upload.mp4";
+  const filename = String(filenameHeader).replace(/[^a-zA-Z0-9.\-_]/g, "_");
+  const ext = path.extname(filename).toLowerCase();
+  
+  // Accept standard media formats
+  const allowedExtensions = [".mp4", ".mov", ".png", ".jpg", ".jpeg", ".webp"];
+  if (!allowedExtensions.includes(ext)) {
+    return res.status(400).json({ error: "Unsupported file type. Please upload a valid MP4/MOV video or image file." });
+  }
+
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+  const destPath = path.join(uploadsDir, uniqueName);
+
+  try {
+    fs.writeFileSync(destPath, req.body);
+    
+    // Support using APP_URL environment parameter if specified, otherwise dynamically check host
+    let baseUrl = "";
+    if (process.env.APP_URL) {
+      baseUrl = process.env.APP_URL.endsWith("/") ? process.env.APP_URL.slice(0, -1) : process.env.APP_URL;
+    } else {
+      const host = req.get("host") || "";
+      const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+      baseUrl = `${protocol}://${host}`;
+    }
+
+    const publicUrl = `${baseUrl}/uploads/${uniqueName}`;
+    console.log(`[Upload Hub]: Successfully saved file binary. Available at: ${publicUrl}`);
+    
+    return res.json({
+      success: true,
+      filename: uniqueName,
+      url: publicUrl,
+    });
+  } catch (err: any) {
+    console.error("[Upload Hub Error]:", err);
+    return res.status(500).json({ error: `Could not write upload stream to static directory: ${err.message}` });
+  }
+});
+
 // Terms of Service Page (HTML)
 app.get(["/terms", "/terms-of-service"], (req: Request, res: Response) => {
   res.header("Content-Type", "text/html");

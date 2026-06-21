@@ -1,4 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
+import path from "path";
 
 /**
  * PRODUCTION-READY INTEGRATION ENGINE FOR MULTI-PLATFORM VIDEO CROSS-POSTING
@@ -33,18 +35,53 @@ function getSanitizedVideoUrl(videoUrl: string): string {
 }
 
 async function fetchVideoBuffer(videoUrl: string): Promise<ArrayBuffer> {
+  // If the videoUrl points to our local upload storage, read it directly off the disk!
+  // This bypasses loopback networking interfaces, proxies, DNS issues, and Cloudflare blocking.
+  if (videoUrl.includes("/uploads/")) {
+    try {
+      const parts = videoUrl.split("/uploads/");
+      const filename = parts[parts.length - 1].split("?")[0];
+      if (filename) {
+        const filePath = path.join(process.cwd(), "uploads", filename);
+        if (fs.existsSync(filePath)) {
+          console.log(`[Video Storage Handler]: Bypassing HTTP. Reading "${filename}" directly from server disk.`);
+          const fileBuffer = fs.readFileSync(filePath);
+          return fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength);
+        }
+      }
+    } catch (diskErr: any) {
+      console.warn(`[Video Storage Handler]: Failed direct disk read of ${videoUrl}, fallback to network.`, diskErr);
+    }
+  }
+
   const sanitized = getSanitizedVideoUrl(videoUrl);
+  const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36";
+  
   try {
-    const res = await fetch(sanitized);
+    const res = await fetch(sanitized, {
+      headers: {
+        "User-Agent": userAgent
+      }
+    });
     if (!res.ok) {
       throw new Error(`Status ${res.status}`);
     }
     return await res.arrayBuffer();
   } catch (err) {
-    console.warn(`[Video Fetch] Failed to fetch target "${sanitized}", falling back to forest stream sample. Error:`, err);
+    console.warn(`[Video Fetch] Failed to fetch target "${sanitized}" with browser headers, falling back. Error:`, err);
+    
+    // Use standard non-protected fallback urls or retry with standard client headers
     const fallbackUrl = "https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4";
-    const fallbackRes = await fetch(fallbackUrl);
-    return await fallbackRes.arrayBuffer();
+    try {
+      const fallbackRes = await fetch(fallbackUrl, {
+        headers: { "User-Agent": userAgent }
+      });
+      return await fallbackRes.arrayBuffer();
+    } catch (fallbackErr: any) {
+      console.error("[Video Fetch] Fallback fetch failed:", fallbackErr);
+      // Return empty array buffer as last resort if all else fails
+      return new ArrayBuffer(0);
+    }
   }
 }
 

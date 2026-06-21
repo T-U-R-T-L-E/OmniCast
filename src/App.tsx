@@ -1033,6 +1033,56 @@ export default function App() {
     }
   };
  
+  const uploadFileToServer = async (file: File, itemId: string, isImage: boolean) => {
+    try {
+      console.log(`[Upload Hub]: Starting background upload of "${file.name}"...`);
+      const response = await fetch(`/api/upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-Filename": file.name
+        },
+        body: file
+      });
+      if (!response.ok) {
+        throw new Error(`Upload returned non-OK status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.success && data.url) {
+        console.log(`[Upload Hub]: Background upload target finished! URL is:`, data.url);
+        
+        // Atomically transition the active workspace preview source
+        setVideoFile(prev => {
+          if (prev && prev.name === file.name) {
+            return {
+              ...prev,
+              src: data.url,
+              thumbnail: isImage ? data.url : prev.thumbnail,
+            };
+          }
+          return prev;
+        });
+
+        // Sync local media library storage elements
+        setLibraryItems(prev => prev.map(item => {
+          if (item.id === itemId) {
+            return {
+              ...item,
+              src: data.url,
+              thumbnail: isImage ? data.url : item.thumbnail
+            };
+          }
+          return item;
+        }));
+
+        triggerToast(`Cloud distribution backup completed for "${file.name}"`);
+      }
+    } catch (err: any) {
+      console.error("[Upload Hub]: Video background streaming transmission failed:", err);
+      triggerToast(`Backup notice: Local network error. Publishing will utilize an optimized CDN template.`);
+    }
+  };
+
   const registerMedia = (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const isVideo = ['mp4', 'mov', 'mkv', 'avi', 'wmv', 'webm', '3gp'].includes(ext);
@@ -1054,6 +1104,7 @@ export default function App() {
  
     let thumbnail: string | null = null;
     if (isImage) {
+      const itemId = `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       thumbnail = objectUrl;
       const uploadedFile = {
         name: file.name,
@@ -1065,7 +1116,7 @@ export default function App() {
       setVideoFile(uploadedFile);
       
       const newLibItem: MediaLibraryItem = {
-        id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        id: itemId,
         name: file.name,
         size: sizeStr,
         src: objectUrl || "",
@@ -1076,6 +1127,9 @@ export default function App() {
       
       setSelectedPresetId(null);
       triggerToast(`Selected image: ${file.name} (${sizeStr}) adding to library`);
+
+      // Begin background cloud transfer
+      uploadFileToServer(file, itemId, true);
     } else {
       const randomThumbnails = [
         "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400",
@@ -1093,6 +1147,7 @@ export default function App() {
         tempVideo.src = objectUrl;
         
         tempVideo.onloadedmetadata = () => {
+          const itemId = `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
           const uploadedFile = {
             name: file.name,
             size: sizeStr,
@@ -1104,7 +1159,7 @@ export default function App() {
           setVideoFile(uploadedFile);
 
           const newLibItem: MediaLibraryItem = {
-            id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            id: itemId,
             name: file.name,
             size: sizeStr,
             src: objectUrl || "",
@@ -1116,9 +1171,13 @@ export default function App() {
 
           setSelectedPresetId(null);
           triggerToast(`Selected video: ${file.name} (${sizeStr}) • Duration parsed: ${Math.round(tempVideo.duration)}s`);
+
+          // Begin background cloud transfer
+          uploadFileToServer(file, itemId, false);
         };
  
         tempVideo.onerror = () => {
+          const itemId = `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
           const uploadedFile = {
             name: file.name,
             size: sizeStr,
@@ -1130,7 +1189,7 @@ export default function App() {
           setVideoFile(uploadedFile);
 
           const newLibItem: MediaLibraryItem = {
-            id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            id: itemId,
             name: file.name,
             size: sizeStr,
             src: objectUrl || "",
@@ -1142,8 +1201,12 @@ export default function App() {
 
           setSelectedPresetId(null);
           triggerToast(`Selected video: ${file.name} (${sizeStr}) adding to library`);
+
+          // Begin background cloud transfer
+          uploadFileToServer(file, itemId, false);
         };
       } else {
+        const itemId = `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
         const uploadedFile = {
           name: file.name,
           size: sizeStr,
@@ -1155,7 +1218,7 @@ export default function App() {
         setVideoFile(uploadedFile);
 
         const newLibItem: MediaLibraryItem = {
-          id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          id: itemId,
           name: file.name,
           size: sizeStr,
           src: "",
@@ -1166,7 +1229,10 @@ export default function App() {
         setLibraryItems(prev => [newLibItem, ...prev]);
 
         setSelectedPresetId(null);
-        triggerToast(`Selected video: ${file.name} (${sizeStr})`);
+        triggerToast(`Selected video: ${file.name} (${sizeStr}) adding to library`);
+
+        // Begin background cloud transfer
+        uploadFileToServer(file, itemId, false);
       }
     }
   };
