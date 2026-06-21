@@ -777,7 +777,16 @@ export default function App() {
   useEffect(() => {
     if (!authedUser) {
       setCampaigns([]);
-      setAccounts(DEFAULT_ACCOUNTS);
+      try {
+        const storedAcc = localStorage.getItem("omnicast_accounts_v1_guest");
+        if (storedAcc) {
+          setAccounts(JSON.parse(storedAcc));
+        } else {
+          setAccounts(DEFAULT_ACCOUNTS);
+        }
+      } catch (e) {
+        setAccounts(DEFAULT_ACCOUNTS);
+      }
       return;
     }
 
@@ -875,12 +884,11 @@ export default function App() {
   const saveAccounts = (updatedAccounts: ConnectedAccount[] | ((prev: ConnectedAccount[]) => ConnectedAccount[])) => {
     setAccounts(prev => {
       const resolved = typeof updatedAccounts === "function" ? updatedAccounts(prev) : updatedAccounts;
-      if (authedUser) {
-        try {
-          localStorage.setItem(`omnicast_accounts_v1_${authedUser.uid}`, JSON.stringify(resolved));
-        } catch (e) {
-          console.error("LocalStorage save accounts error:", e);
-        }
+      const storageKey = authedUser ? `omnicast_accounts_v1_${authedUser.uid}` : "omnicast_accounts_v1_guest";
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(resolved));
+      } catch (e) {
+        console.error("LocalStorage save accounts error:", e);
       }
       return resolved;
     });
@@ -4368,7 +4376,16 @@ META_APP_SECRET=your_meta_app_secret_here`}
                             )}
                             <div className="text-left">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-xs font-bold text-slate-850">@{ytAccount?.username || "YouTube Channel"}</p>
+                                <a
+                                  href={`https://youtube.com/${ytAccount?.username?.startsWith('@') ? ytAccount.username : `@${ytAccount?.username || 'shorts'}`}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 cursor-pointer"
+                                  title="View connected YouTube channel"
+                                >
+                                  <span>@{ytAccount?.username || "YouTube Channel"}</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
                                 <span className="text-[8px] tracking-wide uppercase font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-white leading-none">Active</span>
                               </div>
                               <p className="text-[10px] text-slate-500 font-medium">OAuth integration active & ready for crossposting</p>

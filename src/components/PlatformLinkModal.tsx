@@ -92,6 +92,9 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
     }
   }, [isOpen, platformName]);
 
+  // Setup openedTime state for accurate authorization polling
+  const [openedTime] = useState<number>(Date.now());
+
   // Setup global message listener in the top-level parent to catch callback successes
   useEffect(() => {
     const handleGoogleMessage = (event: MessageEvent) => {
@@ -113,6 +116,29 @@ export const PlatformLinkModal: React.FC<PlatformLinkModalProps> = ({
     window.addEventListener("message", handleGoogleMessage);
     return () => window.removeEventListener("message", handleGoogleMessage);
   }, [platformId, onCompleteLink, onClose]);
+
+  // Poll backup to bypass cross-iframe/origin restrictions in development sandbox
+  useEffect(() => {
+    if (!isOpen || platformName !== "youtube_shorts") return;
+
+    const interval = setInterval(() => {
+      fetch("/api/auth/google/latest-success")
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.latest && data.latest.timestamp > openedTime - 3000) {
+            console.log(`[Polling Success]: Resolved latest authorization for channel "${data.latest.username}"`);
+            setIsVerifying(false);
+            onCompleteLink(platformId, data.latest.username, data.latest.accessToken, data.latest.avatarUrl);
+            onClose();
+          }
+        })
+        .catch(err => {
+          console.error("Failed to poll google latest auth success endpoints:", err);
+        });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, platformName, openedTime, platformId, onCompleteLink, onClose]);
 
   const togglePermission = (id: string) => {
     setPermissions(prev => prev.map(p => {

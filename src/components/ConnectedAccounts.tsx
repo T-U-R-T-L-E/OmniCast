@@ -181,15 +181,36 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <p
-                        onClick={() => acc.connected && startEdit(acc.id, acc.username)}
-                        className={`text-xs ml-0.5 font-mono cursor-pointer hover:underline mt-0.5 ${
-                          acc.connected ? "text-slate-500 hover:text-slate-800" : "text-slate-400"
-                        }`}
-                        title="Click to edit handle"
-                      >
-                        {acc.username}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p
+                          onClick={() => acc.connected && startEdit(acc.id, acc.username)}
+                          className={`text-xs ml-0.5 font-mono cursor-pointer hover:underline ${
+                            acc.connected ? "text-slate-500 hover:text-slate-800" : "text-slate-400"
+                          }`}
+                          title="Click to edit handle"
+                        >
+                          {acc.username}
+                        </p>
+                        {acc.connected && (
+                          <a
+                            href={
+                              acc.platform === "youtube_shorts"
+                                ? `https://youtube.com/${acc.username.startsWith('@') ? acc.username : `@${acc.username || 'shorts'}`}`
+                                : acc.platform === "tiktok"
+                                ? `https://tiktok.com/${acc.username.startsWith('@') ? acc.username : `@${acc.username || 'shorts'}`}`
+                                : acc.platform === "instagram"
+                                ? `https://instagram.com/${acc.username.replace('@', '')}`
+                                : `https://facebook.com/${acc.username}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-blue-500 hover:text-blue-700 hover:underline inline-flex items-center gap-0.5"
+                            title={`Open connected ${config.text} channel in new tab`}
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

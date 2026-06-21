@@ -438,6 +438,26 @@ const getFallbackSecret = (): string =>
     75, 73, 84, 65, 45, 114, 73, 79, 55, 70, 67, 72, 77, 109, 107
   );
 
+// Cache store for authorized google accounts to bypass cross-window/iframe blockages in sandbox previews
+interface YoutubeAuthSuccess {
+  timestamp: number;
+  accessToken: string;
+  refreshToken?: string;
+  username: string;
+  avatarUrl: string;
+}
+let latestYoutubeAuths: YoutubeAuthSuccess[] = [];
+
+// API: Check for any recent successful Google authorizations (polled by clients within iframes)
+app.get("/api/auth/google/latest-success", (req: Request, res: Response) => {
+  const now = Date.now();
+  // Valid success responses in last 3 minutes
+  const validAuths = latestYoutubeAuths.filter(auth => now - auth.timestamp < 180000);
+  res.json({
+    latest: validAuths.length > 0 ? validAuths[validAuths.length - 1] : null
+  });
+});
+
 // API: Generate real Google OAuth authorization URL using host dynamics and server credentials
 app.get("/api/auth/google/url", (req: Request, res: Response) => {
   const client_id = process.env.YOUTUBE_CLIENT_ID || getFallbackId();
@@ -451,7 +471,10 @@ app.get("/api/auth/google/url", (req: Request, res: Response) => {
   }
 
   // Support secure dynamic redirects on current server address in any container
-  const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+  // Keep protocol secured as HTTPS on production/preview cloud runs behind proxy
+  const host = req.get("host") || "";
+  const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+  const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
   const scopes = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly openid email profile";
 
   const stateObj = { source: "omnicast_engine" };
@@ -509,7 +532,9 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
   try {
     const tokenUrl = "https://oauth2.googleapis.com/token";
     // Dynamically retrieve the correct redirect URI representing either dev or preview container running host
-    const redirectUri = `${req.protocol}://${req.get("host")}/api/auth/google/callback`;
+    const host = req.get("host") || "";
+    const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+    const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
 
     console.log(`[Google OAuth]: Sending token exchange request to ${tokenUrl}`);
     console.log(`[Google OAuth]: Redirect URI matched: ${redirectUri}`);
@@ -535,6 +560,7 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     // Attempt to query channel details from YouTube Data API v3
     let channelTitle = "YouTube Connected Channel";
     let avatarUrl = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=150&h=150&q=80";
+    let metaFetched = false;
 
     try {
       const channelRes = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
@@ -547,9 +573,42 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
         const snippet = channelData.items[0].snippet;
         channelTitle = snippet.title || "YouTube Channel";
         avatarUrl = snippet.thumbnails?.default?.url || avatarUrl;
+        metaFetched = true;
       }
     } catch (err: any) {
       console.error("[Google OAuth Callback]: Retrieved token but failed fetching channel detail metadata:", err);
+    }
+
+    // Fallback: If YouTube API returns empty or was not used/not-enabled, fetch standard Google profile metadata
+    if (!metaFetched) {
+      try {
+        console.log("[Google OAuth Callback]: Fetching Google userinfo profile as robust fallback...");
+        const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`
+          }
+        });
+        if (profileRes.ok) {
+          const profileData: any = await profileRes.json();
+          channelTitle = profileData.name || profileData.email || "YouTube Channel";
+          avatarUrl = profileData.picture || avatarUrl;
+          console.log(`[Google OAuth Callback]: Success fallback profile info retrieved: ${channelTitle}`);
+        }
+      } catch (profileErr: any) {
+        console.error("[Google OAuth Callback]: Failed to fetch Google userinfo profile fallback:", profileErr);
+      }
+    }
+
+    // Cache the authentication info for safe polling across tabs/iframes
+    latestYoutubeAuths.push({
+      timestamp: Date.now(),
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token,
+      username: channelTitle,
+      avatarUrl: avatarUrl
+    });
+    if (latestYoutubeAuths.length > 20) {
+      latestYoutubeAuths.shift();
     }
 
     const payload = JSON.stringify({
@@ -570,12 +629,18 @@ app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
             <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 800;">Google Authorized!</h2>
             <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748b; font-weight: 500; line-height:1.5;">Channel <strong>${channelTitle}</strong> connected successfully. You can return to the Crosspost Desk.</p>
             <script>
+              const payloadData = ${payload};
               if (window.opener) {
-                window.opener.postMessage(${payload}, '*');
-                window.close();
-              } else {
-                window.location.href = '/';
+                try {
+                  window.opener.postMessage(payloadData, '*');
+                  setTimeout(() => {
+                    window.close();
+                  }, 1200);
+                } catch (e) {
+                  console.error("Failed to post message to opener", e);
+                }
               }
+              // If popup didn't close, user can return manually
             </script>
           </div>
         </body>
