@@ -106,6 +106,16 @@ export async function uploadToYouTubeShorts(payload: UploadPayload, accessToken:
 
   try {
     // Stage 1: Initialize Resumable Session
+    let uploadContentType = "video/mp4";
+    const lowerUrl = payload.videoUrl.toLowerCase();
+    if (lowerUrl.includes(".mov")) {
+      uploadContentType = "video/quicktime";
+    } else if (lowerUrl.includes(".webm")) {
+      uploadContentType = "video/webm";
+    } else if (lowerUrl.includes(".mkv")) {
+      uploadContentType = "video/x-matroska";
+    }
+
     const initResponse = await fetch(
       "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
       {
@@ -113,7 +123,7 @@ export async function uploadToYouTubeShorts(payload: UploadPayload, accessToken:
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json; charset=UTF-8",
-          "X-Upload-Content-Type": "video/mp4",
+          "X-Upload-Content-Type": uploadContentType,
         },
         body: JSON.stringify(metadata),
       }
