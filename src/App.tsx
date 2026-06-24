@@ -90,7 +90,7 @@ import {
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { isUserEmailVerified, isPasswordLinkingRequired, logOutUser } from "./lib/firebaseAuth";
 import { AuthScreen } from "./components/AuthScreen";
-import { MarketingHeader, HomeView, ServicesView, AboutUsView, ContactUsView } from "./components/MarketingViews";
+import { MarketingHeader, HomeView, ServicesView, ResourcesView, ContactUsView } from "./components/MarketingViews";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./components/TermsOfServicePage";
 import { NotificationsPage } from "./components/NotificationsPage";
@@ -600,7 +600,7 @@ export default function App() {
       const initialMap: Record<string, any> = {
         "/": "home",
         "/services": "services",
-        "/about": "about",
+        "/resources": "about",
         "/contact": "contact",
         "/auth": "auth",
         "/users": "users",
@@ -719,7 +719,7 @@ export default function App() {
     "/": "home",
     "/index.html": "home",
     "/services": "services",
-    "/about": "about",
+    "/resources": "about",
     "/contact": "contact",
     "/auth": "auth",
     "/users": "users",
@@ -751,7 +751,7 @@ export default function App() {
   const PAGE_TO_PATH: Record<string, string> = {
     "home": "/",
     "services": "/services",
-    "about": "/about",
+    "about": "/resources",
     "contact": "/contact",
     "auth": "/auth",
     "users": "/user",
@@ -840,7 +840,8 @@ export default function App() {
     "team_management": "Team",
     "history": "Distribution History",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "about": "Resources"
   };
 
   // Update high-quality clean URLs and page tab title whenever activePage shifts inside the web app
@@ -857,10 +858,28 @@ export default function App() {
       console.warn("[Omni-Cast History]: Navigation pushState failed (likely blocked by iframe sandbox):", e);
     }
 
-    // Dynamically update document title to correspond perfectly with active screen
+    // Dynamically update document title and meta description to correspond perfectly with active screen
     try {
       const sectionTitle = PAGE_TABS_TITLES[activePage] || "Cross-Platform Video Distribution";
       document.title = `${sectionTitle} | Omni-Cast`;
+
+      let metaDescription = document.querySelector('meta[name="description"]');
+      if (!metaDescription) {
+        metaDescription = document.createElement('meta');
+        metaDescription.setAttribute('name', 'description');
+        document.head.appendChild(metaDescription);
+      }
+
+      const descriptions: Record<string, string> = {
+        home: "Omni-Cast helps vertical video creators share their clips on TikTok, Reels, and Shorts simultaneously with safe-zone guidelines.",
+        services: "Discover Omni-Cast's core publishing tools including AI descriptions, crop previews, and distribution scheduling.",
+        about: "Free vertical video specification guides, peak posting hour matrices, and algorithm safe-zone charts for creators.",
+        contact: "Contact the Omni-Cast support team for assistance with video integrations, setups, or pricing inquiries.",
+        auth: "Sign up or log in to Omni-Cast to link your social accounts and start publishing vertical videos with ease."
+      };
+
+      const descText = descriptions[activePage] || "Omni-Cast is a simple and fast platform for multi-platform vertical video publishing.";
+      metaDescription.setAttribute('content', descText);
     } catch (e) {
       // no-op
     }
@@ -2072,7 +2091,7 @@ export default function App() {
         <main className="grow">
           {activePage === "home" && <HomeView onNavigate={setActivePage} />}
           {activePage === "services" && <ServicesView onNavigate={setActivePage} />}
-          {activePage === "about" && <AboutUsView onNavigate={setActivePage} />}
+          {activePage === "about" && <ResourcesView onNavigate={setActivePage} />}
           {activePage === "contact" && <ContactUsView onTriggerToast={triggerToast} />}
           {activePage === "auth" && (
             <div className="min-h-[calc(100vh-4.5rem)] flex items-center justify-center bg-[#070A13] py-12 px-4 sm:px-6 lg:px-8">
