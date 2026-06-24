@@ -20,6 +20,7 @@ import {
   Unlock
 } from "lucide-react";
 import { ConnectedAccount, CrossPost } from "../types";
+import { safeStorage } from "../lib/safeStorage";
 
 interface OnboardingViewProps {
   accounts: ConnectedAccount[];
@@ -34,19 +35,19 @@ export function OnboardingView({ accounts, campaigns, setActivePage, setUploadSt
 
   // Profile Step states
   const [profileName, setProfileName] = useState(() => {
-    return localStorage.getItem("onboarding_profile_name") || "";
+    return safeStorage.getItem("onboarding_profile_name") || "";
   });
   const [isProfileCreated, setIsProfileCreated] = useState(() => {
-    return localStorage.getItem("onboarding_profile_created") === "true";
+    return safeStorage.getItem("onboarding_profile_created") === "true";
   });
   const [profileInputVal, setProfileInputVal] = useState("");
 
   // API Key Step states
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem("onboarding_api_key") || "";
+    return safeStorage.getItem("onboarding_api_key") || "";
   });
   const [isApiKeyGenerated, setIsApiKeyGenerated] = useState(() => {
-    return localStorage.getItem("onboarding_api_key_generated") === "true";
+    return safeStorage.getItem("onboarding_api_key_generated") === "true";
   });
   const [copiedKey, setCopiedKey] = useState(false);
 
@@ -61,8 +62,8 @@ export function OnboardingView({ accounts, campaigns, setActivePage, setUploadSt
     const name = profileInputVal.trim();
     setProfileName(name);
     setIsProfileCreated(true);
-    localStorage.setItem("onboarding_profile_name", name);
-    localStorage.setItem("onboarding_profile_created", "true");
+    safeStorage.setItem("onboarding_profile_name", name);
+    safeStorage.setItem("onboarding_profile_created", "true");
     setProfileInputVal("");
   };
 
@@ -70,8 +71,8 @@ export function OnboardingView({ accounts, campaigns, setActivePage, setUploadSt
   const handleResetProfile = () => {
     setProfileName("");
     setIsProfileCreated(false);
-    localStorage.removeItem("onboarding_profile_name");
-    localStorage.removeItem("onboarding_profile_created");
+    safeStorage.removeItem("onboarding_profile_name");
+    safeStorage.removeItem("onboarding_profile_created");
   };
 
   // Generate API Key
@@ -82,8 +83,8 @@ export function OnboardingView({ accounts, campaigns, setActivePage, setUploadSt
     const newKey = `up_live_${randomHex}`;
     setApiKey(newKey);
     setIsApiKeyGenerated(true);
-    localStorage.setItem("onboarding_api_key", newKey);
-    localStorage.setItem("onboarding_api_key_generated", "true");
+    safeStorage.setItem("onboarding_api_key", newKey);
+    safeStorage.setItem("onboarding_api_key_generated", "true");
   };
 
   // Copy API Key

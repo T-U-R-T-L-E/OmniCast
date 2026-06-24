@@ -29,13 +29,14 @@ import {
   Award
 } from "lucide-react";
 import { UserProfile } from "../types";
+import { safeStorage } from "../lib/safeStorage";
 
 interface AnalyticsViewProps {
   onAddToast: (msg: string) => void;
 }
 
 export function AnalyticsView({ onAddToast }: AnalyticsViewProps) {
-  // Load user profiles from localStorage
+  // Load user profiles from safeStorage
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
   const [period, setPeriod] = useState<"7" | "30" | "90">("30");
@@ -44,7 +45,7 @@ export function AnalyticsView({ onAddToast }: AnalyticsViewProps) {
   const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("uploadpost_user_profiles");
+    const saved = safeStorage.getItem("uploadpost_user_profiles");
     if (saved) {
       try {
         const parsed: UserProfile[] = JSON.parse(saved);
@@ -76,7 +77,7 @@ export function AnalyticsView({ onAddToast }: AnalyticsViewProps) {
       ];
       setProfiles(defaultProfiles);
       setSelectedProfileIds(defaultProfiles.map(p => p.id));
-      localStorage.setItem("uploadpost_user_profiles", JSON.stringify(defaultProfiles));
+      safeStorage.setItem("uploadpost_user_profiles", JSON.stringify(defaultProfiles));
     }
   }, []);
 

@@ -16,6 +16,7 @@ import {
   Trash2,
   Lock
 } from "lucide-react";
+import { safeStorage } from "../lib/safeStorage";
 
 interface ProfileViewProps {
   userEmail: string;
@@ -42,15 +43,15 @@ export function ProfileView({
   
   // Load week preference on mount
   useEffect(() => {
-    const savedWeek = localStorage.getItem("omnicast_week_start");
+    const savedWeek = safeStorage.getItem("omnicast_week_start");
     if (savedWeek === "Sunday" || savedWeek === "Monday") {
-      setWeekStart(savedWeek);
+       setWeekStart(savedWeek);
     }
   }, []);
 
   const handleWeekStartChange = (val: "Monday" | "Sunday") => {
     setWeekStart(val);
-    localStorage.setItem("omnicast_week_start", val);
+    safeStorage.setItem("omnicast_week_start", val);
     onAddToast(`Calendar week preference updated: Starts on ${val}`);
   };
 

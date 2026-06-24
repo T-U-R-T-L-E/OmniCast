@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { safeStorage } from "../lib/safeStorage";
 
 export interface DraftState {
   title: string;
@@ -8,7 +9,7 @@ export interface DraftState {
 
 /**
  * Custom React hook that automatically saves the current draft input fields
- * (title, description, hashtags) to localStorage every 5 seconds.
+ * (title, description, hashtags) to safeStorage every 5 seconds.
  * 
  * If a previously cached draft is found on mount, it will be automatically 
  * restored via the `onRestore` callback.
@@ -26,10 +27,10 @@ export function useAutoSaveDraft(
   const draftRef = useRef<DraftState>({ title, description, hashtags });
   draftRef.current = { title, description, hashtags };
 
-  // One-time automatic restore from local storage on mount
+  // One-time automatic restore from safe storage on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("omnicast_draft_v1");
+      const saved = safeStorage.getItem("omnicast_draft_v1");
       if (saved) {
         const parsed = JSON.parse(saved) as DraftState;
         if (parsed && (parsed.title !== undefined || parsed.description !== undefined || parsed.hashtags !== undefined)) {
@@ -53,7 +54,7 @@ export function useAutoSaveDraft(
           return;
         }
 
-        const stored = localStorage.getItem("omnicast_draft_v1");
+        const stored = safeStorage.getItem("omnicast_draft_v1");
         const parsedStored = stored ? JSON.parse(stored) as DraftState : null;
 
         // Perform standard deep check so we do not spam disk writes unless changes are present
@@ -63,7 +64,7 @@ export function useAutoSaveDraft(
           parsedStored.hashtags !== current.hashtags;
 
         if (hasChanges) {
-          localStorage.setItem("omnicast_draft_v1", JSON.stringify(current));
+          safeStorage.setItem("omnicast_draft_v1", JSON.stringify(current));
           const now = new Date();
           setLastSaved(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
           console.debug("[Omni-Cast AutoSave]: Progress auto-saved locally at", now.toLocaleTimeString());
@@ -81,7 +82,7 @@ export function useAutoSaveDraft(
   const saveDraft = (): string | null => {
     try {
       const current = draftRef.current;
-      localStorage.setItem("omnicast_draft_v1", JSON.stringify(current));
+      safeStorage.setItem("omnicast_draft_v1", JSON.stringify(current));
       const now = new Date();
       const savedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSaved(savedTime);

@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
-import { createServer as createViteServer } from "vite";
+// Vite is imported dynamically inside startServer() to avoid production startup crashes when devDependencies are not installed.
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   uploadToYouTubeShorts, 
@@ -987,13 +987,14 @@ app.post("/api/publish", async (req: Request, res: Response) => {
 
 // Implement Vite middleware for development context
 async function startServer() {
-  const isProductionDevOverride = 
-    process.env.NODE_ENV === "production" || 
-    !fs.existsSync(path.join(process.cwd(), "vite.config.ts"));
+  // Force production-mode static file serving to prevent proxy rate-limiting (429 Rate exceeded)
+  // which is triggered in development mode when the browser requests many individual TSX files.
+  const isProductionDevOverride = true;
 
   if (!isProductionDevOverride) {
     console.log("[Omni-Cast Boot]: Running in DEVELOPMENT mode with Vite dev middleware.");
-    const vite = await createViteServer({
+    const { createServer } = await import("vite");
+    const vite = await createServer({
       server: { middlewareMode: true },
       appType: "spa",
     });

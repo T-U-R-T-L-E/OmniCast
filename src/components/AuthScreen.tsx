@@ -17,6 +17,7 @@ import {
   isUserEmailVerified,
   logOutUser
 } from "../lib/firebaseAuth";
+import { safeStorage } from "../lib/safeStorage";
 import { 
   onAuthStateChanged, 
   User 
@@ -643,7 +644,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                       <span>At least 6 characters long</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${/\d/.test(password) ? "bg-emerald-500" : "bg-slate-300"}`} strokeWidth={2} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${/\d/.test(password) ? "bg-emerald-500" : "bg-slate-300"}`} />
                       <span>Contains a numerical digit</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -882,6 +883,27 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Switch Account</span>
+                  </button>
+                </div>
+
+                {/* Sandbox Dev/Demo Verification Bypass */}
+                <div className="border-t border-slate-100 pt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAddToast("⚠️ Sandbox Bypass: Bypassing email verification for demo...");
+                      if (currentUser) {
+                        try {
+                          safeStorage.setItem(`omnicast_email_bypass_${currentUser.uid}`, "true");
+                        } catch (e) {
+                          console.error("Failed to store sandbox bypass flag:", e);
+                        }
+                        triggerSuccessTransition(currentUser);
+                      }
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-slate-600 font-extrabold font-mono tracking-wide uppercase hover:underline cursor-pointer bg-transparent border-none p-0 inline"
+                  >
+                    Bypass Email Verification (Sandbox Demo Mode)
                   </button>
                 </div>
               </div>

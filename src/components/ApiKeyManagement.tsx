@@ -15,6 +15,7 @@ import {
   X
 } from "lucide-react";
 import { ApiKey } from "../types";
+import { safeStorage } from "../lib/safeStorage";
 
 interface ApiKeyManagementProps {
   onAddToast: (msg: string) => void;
@@ -39,7 +40,7 @@ export function ApiKeyManagement({
     if (externalKeys && externalKeys.length > 0) {
       setKeys(externalKeys);
     } else {
-      const saved = localStorage.getItem("uploadpost_api_keys");
+      const saved = safeStorage.getItem("uploadpost_api_keys");
       if (saved) {
         try {
           setKeys(JSON.parse(saved));
@@ -55,15 +56,15 @@ export function ApiKeyManagement({
 
   const syncKeys = (updated: ApiKey[]) => {
     setKeys(updated);
-    localStorage.setItem("uploadpost_api_keys", JSON.stringify(updated));
+    safeStorage.setItem("uploadpost_api_keys", JSON.stringify(updated));
     
     // Update onboarding state if keys exist
     if (updated.length > 0) {
-      localStorage.setItem("onboarding_api_key", updated[0].key);
-      localStorage.setItem("onboarding_api_key_generated", "true");
+      safeStorage.setItem("onboarding_api_key", updated[0].key);
+      safeStorage.setItem("onboarding_api_key_generated", "true");
     } else {
-      localStorage.removeItem("onboarding_api_key");
-      localStorage.removeItem("onboarding_api_key_generated");
+      safeStorage.removeItem("onboarding_api_key");
+      safeStorage.removeItem("onboarding_api_key_generated");
     }
   };
 

@@ -255,7 +255,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   draggable
-                  onDragStart={(e) => handleDragStartItem(e, item.id)}
+                  onDragStart={(e: any) => handleDragStartItem(e, item.id)}
                   onDragEnd={handleDragEndItem}
                   className={`flex items-center justify-between p-2 bg-white border rounded-xl hover:shadow-xs transition-all cursor-grab active:cursor-grabbing select-none ${
                     draggedItemId === item.id 

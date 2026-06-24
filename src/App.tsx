@@ -90,11 +90,13 @@ import {
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { isUserEmailVerified, isPasswordLinkingRequired, logOutUser } from "./lib/firebaseAuth";
 import { AuthScreen } from "./components/AuthScreen";
+import { MarketingHeader, HomeView, ServicesView, AboutUsView, ContactUsView } from "./components/MarketingViews";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { TermsOfServicePage } from "./components/TermsOfServicePage";
 import { NotificationsPage } from "./components/NotificationsPage";
 import { useAutoSaveDraft } from "./hooks/useAutoSave";
 import { motion, AnimatePresence } from "motion/react";
+import { safeStorage } from "./lib/safeStorage";
 
 const DEFAULT_ACCOUNTS: ConnectedAccount[] = [
   {
@@ -592,7 +594,45 @@ export default function App() {
   const [campaigns, setCampaigns] = useState<CrossPost[]>([]);
 
   // Navigation & Multi-page workspace layout
-  const [activePage, setActivePage] = useState<"users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history" | "privacy" | "terms">("users");
+  const [activePage, setActivePage] = useState<"home" | "services" | "about" | "contact" | "auth" | "users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history" | "privacy" | "terms" | "notifications" | "connections" | "content">(() => {
+    try {
+      const path = window.location.pathname;
+      const initialMap: Record<string, any> = {
+        "/": "home",
+        "/services": "services",
+        "/about": "about",
+        "/contact": "contact",
+        "/auth": "auth",
+        "/users": "users",
+        "/user": "users",
+        "/apikeys": "apikeys",
+        "/api-keys": "apikeys",
+        "/upload": "upload",
+        "/calendar": "calendar",
+        "/analytics": "analytics",
+        "/pricing": "pricing",
+        "/docs": "docs",
+        "/profile": "profile",
+        "/queue": "queue_settings",
+        "/queue_settings": "queue_settings",
+        "/queue-settings": "queue_settings",
+        "/invoices": "invoices",
+        "/connected-apps": "connected_apps",
+        "/connected_apps": "connected_apps",
+        "/team": "team_management",
+        "/team_management": "team_management",
+        "/team-management": "team_management",
+        "/history": "history",
+        "/privacy": "privacy",
+        "/privacy-policy": "privacy",
+        "/terms": "terms",
+        "/terms-of-service": "terms"
+      };
+      return initialMap[path] || "home";
+    } catch (e) {
+      return "home";
+    }
+  });
   const [uploadStep, setUploadStep] = useState<1 | 2 | 3>(1);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [docsTabOverride, setDocsTabOverride] = useState<"guides" | "helpdesk" | "review" | undefined>(undefined);
@@ -638,11 +678,11 @@ export default function App() {
   const [hasPublishingFailed, setHasPublishingFailed] = useState<boolean>(false);
 
   const [darkMode, setDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem("omnicast_dark") === "true";
+    return safeStorage.getItem("omnicast_dark") === "true";
   });
 
   useEffect(() => {
-    localStorage.setItem("omnicast_dark", darkMode ? "true" : "false");
+    safeStorage.setItem("omnicast_dark", darkMode ? "true" : "false");
     document.body.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
@@ -675,7 +715,13 @@ export default function App() {
   }, []);
 
   // Client-side mapping of standard URLs to page states
-  const ROUTE_MAP: Record<string, "users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history" | "privacy" | "terms"> = {
+  const ROUTE_MAP: Record<string, "home" | "services" | "about" | "contact" | "auth" | "users" | "apikeys" | "upload" | "calendar" | "analytics" | "pricing" | "docs" | "profile" | "queue_settings" | "invoices" | "connected_apps" | "team_management" | "history" | "privacy" | "terms" | "notifications"> = {
+    "/": "home",
+    "/index.html": "home",
+    "/services": "services",
+    "/about": "about",
+    "/contact": "contact",
+    "/auth": "auth",
     "/users": "users",
     "/user": "users",
     "/apikeys": "apikeys",
@@ -703,6 +749,11 @@ export default function App() {
   };
 
   const PAGE_TO_PATH: Record<string, string> = {
+    "home": "/",
+    "services": "/services",
+    "about": "/about",
+    "contact": "/contact",
+    "auth": "/auth",
     "users": "/user",
     "apikeys": "/apikeys",
     "upload": "/upload",
@@ -723,22 +774,56 @@ export default function App() {
   // Initial routing check & Popstate event listener for browser alignment
   useEffect(() => {
     const handleLocationChange = () => {
-      const path = window.location.pathname;
-      if (ROUTE_MAP[path]) {
-        setActivePage(ROUTE_MAP[path]);
-      } else if (path !== "/") {
-        // Fallback default
-        setActivePage("users");
+      try {
+        const path = window.location.pathname;
+        if (ROUTE_MAP[path]) {
+          setActivePage(ROUTE_MAP[path]);
+        } else if (path === "/" || path === "/index.html") {
+          setActivePage("home");
+        } else {
+          // Fallback default
+          setActivePage("home");
+        }
+      } catch (e) {
+        console.warn("[Omni-Cast Navigation]: Unable to read window.location (possibly blocked by sandbox):", e);
       }
     };
 
     handleLocationChange();
 
-    window.addEventListener("popstate", handleLocationChange);
+    try {
+      window.addEventListener("popstate", handleLocationChange);
+    } catch (e) {
+      console.warn("[Omni-Cast Navigation]: Failed to add popstate listener:", e);
+    }
     return () => {
-      window.removeEventListener("popstate", handleLocationChange);
+      try {
+        window.removeEventListener("popstate", handleLocationChange);
+      } catch (e) {
+        // no-op
+      }
     };
   }, []);
+
+  // Secure Authentication Route Gate
+  useEffect(() => {
+    if (!authChecked) return;
+
+    const PUBLIC_PAGES = ["home", "services", "about", "contact", "auth", "privacy", "terms"];
+
+    if (!authedUser) {
+      // If user is guest and tries to access dashboard pages, redirect to '/auth'
+      if (!PUBLIC_PAGES.includes(activePage)) {
+        triggerToast("⚠️ Access restricted. Please sign in to enter the workspace.");
+        setActivePage("auth");
+      }
+    } else {
+      // If authenticated user tries to manually visit landing or auth screen, direct them past the gate into the dashboard
+      if (activePage === "auth" || activePage === "home") {
+        setActivePage("upload");
+      }
+    }
+  }, [authedUser, activePage, authChecked]);
 
   const PAGE_TABS_TITLES: Record<string, string> = {
     "users": "Users Center",
@@ -760,17 +845,25 @@ export default function App() {
 
   // Update high-quality clean URLs and page tab title whenever activePage shifts inside the web app
   useEffect(() => {
-    const path = window.location.pathname;
-    const targetPath = PAGE_TO_PATH[activePage];
-    if (targetPath && path !== targetPath) {
-      window.history.pushState(null, "", targetPath);
-    } else if (!targetPath && path !== "/") {
-      window.history.pushState(null, "", "/");
+    try {
+      const path = window.location.pathname;
+      const targetPath = PAGE_TO_PATH[activePage];
+      if (targetPath && path !== targetPath) {
+        window.history.pushState(null, "", targetPath);
+      } else if (!targetPath && path !== "/") {
+        window.history.pushState(null, "", "/");
+      }
+    } catch (e) {
+      console.warn("[Omni-Cast History]: Navigation pushState failed (likely blocked by iframe sandbox):", e);
     }
 
     // Dynamically update document title to correspond perfectly with active screen
-    const sectionTitle = PAGE_TABS_TITLES[activePage] || "Cross-Platform Video Distribution";
-    document.title = `${sectionTitle} | Omni-Cast`;
+    try {
+      const sectionTitle = PAGE_TABS_TITLES[activePage] || "Cross-Platform Video Distribution";
+      document.title = `${sectionTitle} | Omni-Cast`;
+    } catch (e) {
+      // no-op
+    }
   }, [activePage]);
 
   // Load campaigns user-specific history when authedUser becomes active
@@ -778,7 +871,7 @@ export default function App() {
     if (!authedUser) {
       setCampaigns([]);
       try {
-        const storedAcc = localStorage.getItem("omnicast_accounts_v1_guest");
+        const storedAcc = safeStorage.getItem("omnicast_accounts_v1_guest");
         if (storedAcc) {
           setAccounts(JSON.parse(storedAcc));
         } else {
@@ -805,7 +898,7 @@ export default function App() {
 
       if (!loadedFromFirestore) {
         try {
-          const stored = localStorage.getItem(`posting_campaigns_v1_${authedUser.uid}`);
+          const stored = safeStorage.getItem(`posting_campaigns_v1_${authedUser.uid}`);
           if (stored) {
             setCampaigns(JSON.parse(stored));
           } else {
@@ -827,7 +920,7 @@ export default function App() {
                 analytics: { views: 8490, likes: 1220, shares: 340, comments: 84 }
               }
             ];
-            localStorage.setItem(`posting_campaigns_v1_${authedUser.uid}`, JSON.stringify(initialMock));
+            safeStorage.setItem(`posting_campaigns_v1_${authedUser.uid}`, JSON.stringify(initialMock));
             setCampaigns(initialMock);
           }
         } catch (e) {
@@ -840,7 +933,7 @@ export default function App() {
 
     // Load personalized connected accounts from LocalStorage
     try {
-      const storedAcc = localStorage.getItem(`omnicast_accounts_v1_${authedUser.uid}`);
+      const storedAcc = safeStorage.getItem(`omnicast_accounts_v1_${authedUser.uid}`);
       if (storedAcc) {
         setAccounts(JSON.parse(storedAcc));
       } else {
@@ -856,7 +949,7 @@ export default function App() {
     setCampaigns(updated);
     if (!authedUser) return;
     try {
-      localStorage.setItem(`posting_campaigns_v1_${authedUser.uid}`, JSON.stringify(updated));
+      safeStorage.setItem(`posting_campaigns_v1_${authedUser.uid}`, JSON.stringify(updated));
     } catch (e) {
       console.error("LocalStorage save error:", e);
     }
@@ -883,14 +976,14 @@ export default function App() {
   // Connected Account handlers
   const saveAccounts = (updatedAccounts: ConnectedAccount[] | ((prev: ConnectedAccount[]) => ConnectedAccount[])) => {
     setAccounts(prev => {
-      const resolved = typeof updatedAccounts === "function" ? updatedAccounts(prev) : updatedAccounts;
-      const storageKey = authedUser ? `omnicast_accounts_v1_${authedUser.uid}` : "omnicast_accounts_v1_guest";
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(resolved));
-      } catch (e) {
-        console.error("LocalStorage save accounts error:", e);
-      }
-      return resolved;
+       const resolved = typeof updatedAccounts === "function" ? updatedAccounts(prev) : updatedAccounts;
+       const storageKey = authedUser ? `omnicast_accounts_v1_${authedUser.uid}` : "omnicast_accounts_v1_guest";
+       try {
+         safeStorage.setItem(storageKey, JSON.stringify(resolved));
+       } catch (e) {
+         console.error("LocalStorage save accounts error:", e);
+       }
+       return resolved;
     });
   };
 
@@ -1963,12 +2056,73 @@ export default function App() {
     );
   }
 
+  const isPublicPage = ["home", "services", "about", "contact", "auth", "privacy", "terms"].includes(activePage);
+
+  if (isPublicPage) {
+    return (
+      <div id="marketing-root" className="min-h-screen bg-[#070A13] font-sans flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+        <MarketingHeader 
+          activePage={activePage} 
+          onNavigate={(page) => {
+            setActivePage(page);
+          }} 
+          onTriggerToast={triggerToast}
+          isAuthenticated={!!authedUser}
+        />
+        <main className="grow">
+          {activePage === "home" && <HomeView onNavigate={setActivePage} />}
+          {activePage === "services" && <ServicesView onNavigate={setActivePage} />}
+          {activePage === "about" && <AboutUsView onNavigate={setActivePage} />}
+          {activePage === "contact" && <ContactUsView onTriggerToast={triggerToast} />}
+          {activePage === "auth" && (
+            <div className="min-h-[calc(100vh-4.5rem)] flex items-center justify-center bg-[#070A13] py-12 px-4 sm:px-6 lg:px-8">
+              <div className="w-full max-w-md">
+                <AuthScreen 
+                  onAuthSuccess={(user: any) => {
+                    setAuthedUser(user);
+                    setActivePage("upload");
+                    triggerToast("🔓 Access Granted: Welcome to the Omni-Cast Workspace!");
+                  }} 
+                  onAddToast={triggerToast} 
+                />
+              </div>
+            </div>
+          )}
+          {activePage === "privacy" && (
+            <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-left text-white">
+              <PrivacyPolicyPage onBack={() => {
+                setActivePage("home");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }} />
+            </div>
+          )}
+          {activePage === "terms" && (
+            <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-left text-white">
+              <TermsOfServicePage onBack={() => {
+                setActivePage("home");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }} />
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   if (!authedUser) {
     return (
-      <AuthScreen 
-        onAuthSuccess={(user: any) => setAuthedUser(user)} 
-        onAddToast={triggerToast} 
-      />
+      <div className="min-h-screen bg-[#070A13] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md">
+          <AuthScreen 
+            onAuthSuccess={(user: any) => {
+              setAuthedUser(user);
+              setActivePage("upload");
+              triggerToast("🔓 Access Granted: Welcome to the Omni-Cast Workspace!");
+            }} 
+            onAddToast={triggerToast} 
+          />
+        </div>
+      </div>
     );
   }
 

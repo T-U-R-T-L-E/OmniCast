@@ -12,6 +12,7 @@ import {
   ThumbsUp,
   Award
 } from "lucide-react";
+import { safeStorage } from "../lib/safeStorage";
 
 interface Review {
   id: string;
@@ -86,7 +87,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("omnicast_reviews");
+    const saved = safeStorage.getItem("omnicast_reviews");
     if (saved) {
       try {
         setReviews(JSON.parse(saved));
@@ -95,7 +96,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
       }
     } else {
       setReviews(DEFAULT_REVIEWS);
-      localStorage.setItem("omnicast_reviews", JSON.stringify(DEFAULT_REVIEWS));
+      safeStorage.setItem("omnicast_reviews", JSON.stringify(DEFAULT_REVIEWS));
     }
   }, []);
 
@@ -136,7 +137,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
 
     const updatedReviews = [newReview, ...reviews];
     setReviews(updatedReviews);
-    localStorage.setItem("omnicast_reviews", JSON.stringify(updatedReviews));
+    safeStorage.setItem("omnicast_reviews", JSON.stringify(updatedReviews));
     
     // Clear and success state
     setName("");
@@ -169,7 +170,7 @@ export function ReviewFormView({ onAddToast, onNavigateToDocs }: ReviewFormViewP
       return r;
     });
     setReviews(updated);
-    localStorage.setItem("omnicast_reviews", JSON.stringify(updated));
+    safeStorage.setItem("omnicast_reviews", JSON.stringify(updated));
     onAddToast("Thank you for your vote! Upvoted review.");
   };
 

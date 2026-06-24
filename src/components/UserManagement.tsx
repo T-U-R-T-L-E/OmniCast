@@ -18,6 +18,7 @@ import {
   Smartphone
 } from "lucide-react";
 import { UserProfile, ConnectedAccount } from "../types";
+import { safeStorage } from "../lib/safeStorage";
 
 interface UserManagementProps {
   accounts: ConnectedAccount[];
@@ -50,7 +51,7 @@ export function UserManagement({
       setProfiles(externalProfiles);
     } else {
       const storageKey = userId ? `uploadpost_user_profiles_${userId}` : "uploadpost_user_profiles";
-      const saved = localStorage.getItem(storageKey);
+      const saved = safeStorage.getItem(storageKey);
       if (saved) {
         try {
           setProfiles(JSON.parse(saved));
@@ -61,7 +62,7 @@ export function UserManagement({
         if (userId) {
           // New authenticated user starts with absolutely no profile created yet!
           setProfiles([]);
-          localStorage.setItem(storageKey, JSON.stringify([]));
+          safeStorage.setItem(storageKey, JSON.stringify([]));
         } else {
           // Seed default profile so the view looks pristine yet has data for guest demo
           const defaultProfiles: UserProfile[] = [
@@ -74,7 +75,7 @@ export function UserManagement({
             }
           ];
           setProfiles(defaultProfiles);
-          localStorage.setItem(storageKey, JSON.stringify(defaultProfiles));
+          safeStorage.setItem(storageKey, JSON.stringify(defaultProfiles));
         }
       }
     }
@@ -84,9 +85,9 @@ export function UserManagement({
   const syncProfiles = (updated: UserProfile[]) => {
     setProfiles(updated);
     const storageKey = userId ? `uploadpost_user_profiles_${userId}` : "uploadpost_user_profiles";
-    localStorage.setItem(storageKey, JSON.stringify(updated));
-    localStorage.setItem("onboarding_profile_name", updated[0]?.name || "master_workspace");
-    localStorage.setItem("onboarding_profile_created", updated.length > 0 ? "true" : "false");
+    safeStorage.setItem(storageKey, JSON.stringify(updated));
+    safeStorage.setItem("onboarding_profile_name", updated[0]?.name || "master_workspace");
+    safeStorage.setItem("onboarding_profile_created", updated.length > 0 ? "true" : "false");
   };
 
   // Profile validation input characters: letters, numbers, underscores, hyphens, and @

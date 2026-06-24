@@ -13,6 +13,7 @@ import {
   updateProfile
 } from "firebase/auth";
 import { auth } from "./firebase";
+import { safeStorage } from "./safeStorage";
 
 /**
  * Maps standard Firebase Auth error codes to user-friendly messages as requested.
@@ -140,6 +141,16 @@ export async function linkAccountWithPassword(password: string): Promise<User> {
 export function isUserEmailVerified(user: User | null): boolean {
   if (!user) return false;
   
+  // Check if sandbox demo bypass is active for this user
+  try {
+    const bypass = safeStorage.getItem(`omnicast_email_bypass_${user.uid}`);
+    if (bypass === "true") {
+      return true; // Bypass email verification in local sandbox/demo mode
+    }
+  } catch (e) {
+    console.warn("[Omni-Cast Auth]: Failed to read email bypass flag:", e);
+  }
+
   // Custom auth rule: Social login providers are implicitly trusted as verified.
   // Standard email-password registration requires validation.
   const providers = user.providerData.map(p => p.providerId);

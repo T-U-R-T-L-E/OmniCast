@@ -12,6 +12,7 @@ import {
   Terminal,
   Clock
 } from "lucide-react";
+import { safeStorage } from "../lib/safeStorage";
 
 interface NotificationsPageProps {
   onBack: () => void;
@@ -19,18 +20,18 @@ interface NotificationsPageProps {
 }
 
 export function NotificationsPage({ onBack, onSave }: NotificationsPageProps) {
-  // Load preferences from localStorage for immediate offline persistence
+  // Load preferences from safeStorage for immediate offline persistence
   const [telegramEnabled, setTelegramEnabled] = useState<boolean>(() => {
-    return localStorage.getItem("omnicast_notif_telegram") === "true";
+    return safeStorage.getItem("omnicast_notif_telegram") === "true";
   });
   const [webhookEnabled, setWebhookEnabled] = useState<boolean>(() => {
-    return localStorage.getItem("omnicast_notif_webhook") === "true";
+    return safeStorage.getItem("omnicast_notif_webhook") === "true";
   });
   const [webhookUrl, setWebhookUrl] = useState<string>(() => {
-    return localStorage.getItem("omnicast_notif_webhook_url") || "https://api.myplatform.com/webhooks/omnicast";
+    return safeStorage.getItem("omnicast_notif_webhook_url") || "https://api.myplatform.com/webhooks/omnicast";
   });
   const [telegramUsername, setTelegramUsername] = useState<string>(() => {
-    return localStorage.getItem("omnicast_notif_telegram_user") || "";
+    return safeStorage.getItem("omnicast_notif_telegram_user") || "";
   });
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -51,10 +52,10 @@ export function NotificationsPage({ onBack, onSave }: NotificationsPageProps) {
     setIsSaving(true);
     // Simulate slight API buffer for tactile premium responsiveness
     setTimeout(() => {
-      localStorage.setItem("omnicast_notif_telegram", telegramEnabled ? "true" : "false");
-      localStorage.setItem("omnicast_notif_webhook", webhookEnabled ? "true" : "false");
-      localStorage.setItem("omnicast_notif_webhook_url", webhookUrl);
-      localStorage.setItem("omnicast_notif_telegram_user", telegramUsername);
+      safeStorage.setItem("omnicast_notif_telegram", telegramEnabled ? "true" : "false");
+      safeStorage.setItem("omnicast_notif_webhook", webhookEnabled ? "true" : "false");
+      safeStorage.setItem("omnicast_notif_webhook_url", webhookUrl);
+      safeStorage.setItem("omnicast_notif_telegram_user", telegramUsername);
       setIsSaving(false);
       setSaveSuccess(true);
       if (onSave) onSave();
