@@ -16,6 +16,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
+// Enable CORS middleware globally to prevent cross-origin "Script error." in iframe environments
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "X-Requested-With,content-type,x-filename,Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json({ limit: "50mb" }));
 
 // Lazy initializer for Google GenAI to prevent crashes on startup if key is missing
@@ -1012,6 +1024,10 @@ async function startServer() {
       // If it looks like an API route, do not send index.html SPA fallback
       if (req.path.startsWith("/api/")) {
         return res.status(404).json({ error: "API endpoint not found" });
+      }
+      // If the request points to a static asset that wasn't found by express.static, return a 404
+      if (/\.(js|css|png|jpe?g|gif|svg|ico|map|json|woff2?|ttf|otf|mp4|mov)$/i.test(req.path)) {
+        return res.status(404).send("Asset not found");
       }
       res.sendFile(path.join(distPath, "index.html"));
     });

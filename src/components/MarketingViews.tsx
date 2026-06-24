@@ -92,16 +92,43 @@ export function MarketingHeader({ activePage, onNavigate, onTriggerToast, isAuth
 
       {/* Desktop actions button */}
       <div className="hidden md:flex items-center space-x-4">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate(isAuthenticated ? "upload" : "auth");
-          }}
-          className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 text-white shadow-lg shadow-indigo-950/50 hover:shadow-indigo-900/60 transition-all duration-200 flex items-center gap-1.5 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
-        >
-          <span>{isAuthenticated ? "Go to Dashboard" : "Start Now"}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        {!isAuthenticated ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                onNavigate("auth");
+                onTriggerToast("Opening sign-in panel");
+              }}
+              className="text-slate-300 hover:text-white transition-colors text-xs font-bold px-3 py-2 cursor-pointer"
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onNavigate("auth");
+                onTriggerToast("Directing to startup panel");
+              }}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 text-white shadow-lg shadow-indigo-950/50 hover:shadow-indigo-900/60 transition-all duration-200 flex items-center gap-1.5 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <span>Start Now</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate("upload");
+              onTriggerToast("Entering the app workspace");
+            }}
+            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-700 text-white shadow-lg shadow-indigo-950/50 hover:shadow-indigo-900/60 transition-all duration-200 flex items-center gap-1.5 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <span>Go to Dashboard</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Mobile menu hamburger toggle */}
