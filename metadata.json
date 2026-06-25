@@ -1,6 +1,6 @@
 {
-  "name": "Omni-Cast",
-  "description": "An all-in-one vertical video scheduling and cross-posting platform to write, optimize, and publish reels, tiktoks, and shorts across all major platforms.",
+  "name": "Upload-Post",
+  "description": "Social Media Posting API for TikTok, Instagram, YouTube & 9 more platforms. One API call, all networks. Python & JS SDKs.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

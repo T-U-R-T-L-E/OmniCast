@@ -2100,9 +2100,10 @@ export default function App() {
                   onAuthSuccess={(user: any) => {
                     setAuthedUser(user);
                     setActivePage("upload");
-                    triggerToast("🔓 Access Granted: Welcome to the Omni-Cast Workspace!");
+                    triggerToast("🔓 Access Granted: Welcome to the Upload-Post Workspace!");
                   }} 
                   onAddToast={triggerToast} 
+                  onBackToWebsite={() => setActivePage("home")}
                 />
               </div>
             </div>
@@ -2136,9 +2137,10 @@ export default function App() {
             onAuthSuccess={(user: any) => {
               setAuthedUser(user);
               setActivePage("upload");
-              triggerToast("🔓 Access Granted: Welcome to the Omni-Cast Workspace!");
+              triggerToast("🔓 Access Granted: Welcome to the Upload-Post Workspace!");
             }} 
             onAddToast={triggerToast} 
+            onBackToWebsite={() => setActivePage("home")}
           />
         </div>
       </div>

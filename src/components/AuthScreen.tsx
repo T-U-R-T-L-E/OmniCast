@@ -49,9 +49,10 @@ import {
 interface AuthScreenProps {
   onAuthSuccess: (user: User) => void;
   onAddToast: (msg: string) => void;
+  onBackToWebsite?: () => void;
 }
 
-export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
+export function AuthScreen({ onAuthSuccess, onAddToast, onBackToWebsite }: AuthScreenProps) {
   // Navigation states: "signin" | "signup" | "forgot" | "verify" | "linking"
   const [mode, setMode] = useState<"signin" | "signup" | "forgot" | "verify" | "linking">("signin");
   
@@ -260,15 +261,16 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
   };
 
   // Handle Password Reset Request
-  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLoading) return;
+  const handlePasswordResetSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isLoading || countdown > 0) return;
     setIsLoading(true);
     setErrorMsg(null);
     try {
       await triggerPasswordReset(email);
       setResetEmailSent(true);
       onAddToast("✉️ Reset instructions dispatched to your email address!");
+      setCountdown(60);
     } catch (err: any) {
       setErrorMsg(translateAuthError(err.code));
     } finally {
@@ -366,16 +368,28 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
           {/* Visual abstract banner strip */}
           <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-550 via-blue-500 to-indigo-600" />
 
+          {/* Back to Website Button */}
+          {onBackToWebsite && (mode === "signin" || mode === "signup") && (
+            <button 
+              type="button" 
+              onClick={onBackToWebsite}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 font-bold transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Website</span>
+            </button>
+          )}
+
           {/* Core App Context & Logo */}
           <div className="flex flex-col items-center justify-center text-center space-y-2 pt-2">
             <img 
               src="https://past-aquamarine-opezzkg3.edgeone.app/logo%204%20(2).png" 
-              alt="Omni-Cast logo" 
+              alt="Upload-Post logo" 
               className="h-14 object-contain mx-auto"
               referrerPolicy="no-referrer"
             />
             <div>
-              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Welcome to Omni-Cast</h1>
+              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Welcome to Upload-Post</h1>
               <p className="text-[10px] text-indigo-650 font-bold font-mono tracking-widest uppercase mt-0.5">Cross-Platform Video Distribution</p>
             </div>
           </div>
@@ -541,7 +555,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
               {/* Registration Redirection */}
               <div className="border-t border-slate-100 pt-4 text-center">
                 <p className="text-xs text-slate-500 font-semibold">
-                  New creator on Omni-Cast?{" "}
+                  New creator on Upload-Post?{" "}
                   <button 
                     type="button" 
                     onClick={() => setMode("signup")}
@@ -788,6 +802,17 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                   <p className="text-xs text-slate-650 leading-relaxed font-semibold">
                     Check your inbox. A secure link has been sent to <strong className="text-slate-800">{email}</strong>. Use the link inside to set up a new password credentials block before attempting sign in.
                   </p>
+                  
+                  <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-xs">
+                    <button 
+                      type="button" 
+                      onClick={() => handlePasswordResetSubmit()}
+                      disabled={countdown > 0 || isLoading}
+                      className="font-extrabold text-indigo-600 hover:text-indigo-750 hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline"
+                    >
+                      {countdown > 0 ? `Resend Reset Link (${countdown}s)` : "Resend Reset Link"}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handlePasswordResetSubmit} className="space-y-4">
@@ -1003,7 +1028,7 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
 
         {/* Footer containing Terms & Privacy links with direct trigger view */}
         <div className="mt-6 flex items-center justify-center space-x-3 text-[11px] text-slate-400 font-semibold select-none">
-          <span className="font-black text-slate-600 tracking-wider">Omni-Cast</span>
+          <span className="font-black text-slate-600 tracking-wider">Upload-Post</span>
           <span>•</span>
           <button
             type="button"
@@ -1059,20 +1084,20 @@ export function AuthScreen({ onAuthSuccess, onAddToast }: AuthScreenProps) {
                 {authModalView === "terms" ? (
                   <>
                     <p className="font-bold text-slate-800">1. Acceptance of Terms</p>
-                    <p>By creating an account on Omni-Cast, you acknowledge you have read, grasped, and verified compliance with our services guidelines.</p>
+                    <p>By creating an account on Upload-Post, you acknowledge you have read, grasped, and verified compliance with our services guidelines.</p>
                     <p className="font-bold text-slate-800">2. Platform Dispatch Compliance</p>
-                    <p>Omni-Cast acts as a cross-posting workflow hub. Users are solely responsible for compliance with specific platform policies (including YouTube Shorts, TikTok, Instagram, and Facebook terms of service). Any violation of third-party guidelines may lead to account de-authorization.</p>
+                    <p>Upload-Post acts as a cross-posting workflow hub. Users are solely responsible for compliance with specific platform policies (including YouTube Shorts, TikTok, Instagram, and Facebook terms of service). Any violation of third-party guidelines may lead to account de-authorization.</p>
                     <p className="font-bold text-slate-850">3. Fair & Proper Usage</p>
                     <p>All automated tasks must use authorized endpoint tokens. Spamming, bulk duplication of copyrighted assets, or routing of malware vectors is strictly forbidden and results in instant, permanent account ban.</p>
                     <p className="font-bold text-slate-800">4. Modifications & Services</p>
-                    <p>We reserve absolute rights to optimize, adjust, or suspend features of Omni-Cast to preserve system integrity or comply with social network adjustments.</p>
+                    <p>We reserve absolute rights to optimize, adjust, or suspend features of Upload-Post to preserve system integrity or comply with social network adjustments.</p>
                   </>
                 ) : (
                   <>
                     <p className="font-bold text-slate-800">1. Information We Collect</p>
                     <p>We receive database entries with your email address securely persisted via Google Firebase Authentication. For dispatch functionalities, social profile tokens are cached safely inside secure local client-side memory blocks.</p>
                     <p className="font-bold text-slate-800">2. Asset Retention and Safety</p>
-                    <p>Media files uploaded to Omni-Cast (e.g. MP4 clips) are processed safely and routed securely to selected platform endpoints. We do not sell or lease any user assets to telemetry brokers or marketing organizations.</p>
+                    <p>Media files uploaded to Upload-Post (e.g. MP4 clips) are processed safely and routed securely to selected platform endpoints. We do not sell or lease any user assets to telemetry brokers or marketing organizations.</p>
                     <p className="font-bold text-slate-800">3. Cookie Configuration</p>
                     <p>We use essential local state records to keep authenticated creators connected without displaying repeated password verification modals.</p>
                     <p className="font-bold text-slate-800">4. Security Standards</p>
