@@ -94,6 +94,11 @@ export interface MediaLibraryItem {
   thumbnail: string;
   type: "video" | "image";
   duration?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: string;
+  isVertical?: boolean;
+  warning?: string;
 }
 
 export interface UserProfile {

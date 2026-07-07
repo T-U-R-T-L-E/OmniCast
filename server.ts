@@ -61,6 +61,35 @@ app.get("/api/config", (req: Request, res: Response) => {
 // Serve physical uploaded files in both dev and production contexts
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// Explicit sitemap.xml and sitemap.xsl route definitions at the root level for 100% reliable content-types
+app.get("/sitemap.xml", (req: Request, res: Response) => {
+  const sitemapPath = path.join(process.cwd(), "public", "sitemap.xml");
+  if (fs.existsSync(sitemapPath)) {
+    res.header("Content-Type", "application/xml; charset=utf-8");
+    return res.sendFile(sitemapPath);
+  }
+  const sitemapDist = path.join(process.cwd(), "dist", "sitemap.xml");
+  if (fs.existsSync(sitemapDist)) {
+    res.header("Content-Type", "application/xml; charset=utf-8");
+    return res.sendFile(sitemapDist);
+  }
+  res.status(404).send("Sitemap not found");
+});
+
+app.get("/sitemap.xsl", (req: Request, res: Response) => {
+  const xslPath = path.join(process.cwd(), "public", "sitemap.xsl");
+  if (fs.existsSync(xslPath)) {
+    res.header("Content-Type", "text/xsl; charset=utf-8");
+    return res.sendFile(xslPath);
+  }
+  const xslDist = path.join(process.cwd(), "dist", "sitemap.xsl");
+  if (fs.existsSync(xslDist)) {
+    res.header("Content-Type", "text/xsl; charset=utf-8");
+    return res.sendFile(xslDist);
+  }
+  res.status(404).send("Sitemap stylesheet not found");
+});
+
 // API: Handle raw file uploads (videos/images) without third-party form-data parsers (highly portable)
 app.post("/api/upload", express.raw({ type: "*/*", limit: "150mb" }), (req: Request, res: Response) => {
   const filenameHeader = req.headers["x-filename"] || "upload.mp4";
@@ -1015,9 +1044,11 @@ async function startServer() {
     // Serve production static assets from the 'dist' folder
     console.log("[Omni-Cast Boot]: Running in PRODUCTION mode with static file delivery.");
     const distPath = path.join(process.cwd(), "dist");
+    const publicPath = path.join(process.cwd(), "public");
     
     // Serve physical static assets
     app.use(express.static(distPath));
+    app.use(express.static(publicPath));
     
     // THE CRITICAL FIX: Catch-all wildcard route to handle client-side deep routing and browser refreshes
     app.get("*", (req: Request, res: Response) => {
@@ -1026,7 +1057,7 @@ async function startServer() {
         return res.status(404).json({ error: "API endpoint not found" });
       }
       // If the request points to a static asset that wasn't found by express.static, return a 404
-      if (/\.(js|css|png|jpe?g|gif|svg|ico|map|json|woff2?|ttf|otf|mp4|mov)$/i.test(req.path)) {
+      if (/\.(js|css|png|jpe?g|gif|svg|ico|map|json|woff2?|ttf|otf|mp4|mov|xml)$/i.test(req.path)) {
         return res.status(404).send("Asset not found");
       }
       res.sendFile(path.join(distPath, "index.html"));

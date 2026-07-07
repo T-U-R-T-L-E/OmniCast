@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ConnectedAccount } from "../types";
-import { Link2, Link2Off, RefreshCw, CheckCircle2, AlertCircle, Plus, ExternalLink, Info } from "lucide-react";
+import { Link2, Link2Off, RefreshCw, CheckCircle2, AlertCircle, Plus, ExternalLink, Info, Facebook, Instagram, Youtube, Music } from "lucide-react";
 import { PlatformLinkModal } from "./PlatformLinkModal";
 
 interface ConnectedAccountsProps {
@@ -48,6 +48,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           badge: "bg-teal-500/10 text-teal-400 border border-teal-500/20",
           brandColor: "bg-gradient-to-r from-teal-400 via-rose-500 to-black",
           text: "TikTok Reels",
+          icon: Music,
         };
       case "instagram":
         return {
@@ -56,6 +57,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           badge: "bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20",
           brandColor: "bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400",
           text: "Instagram Reels",
+          icon: Instagram,
         };
       case "facebook":
         return {
@@ -64,6 +66,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           badge: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
           brandColor: "bg-blue-600",
           text: "Facebook Reels",
+          icon: Facebook,
         };
       case "youtube_shorts":
         return {
@@ -72,6 +75,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           badge: "bg-red-500/10 text-red-400 border border-red-500/20",
           brandColor: "bg-red-600",
           text: "YouTube Shorts",
+          icon: Youtube,
         };
       default:
         return {
@@ -80,6 +84,7 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
           badge: "bg-slate-500/10 text-slate-400 border border-slate-500/20",
           brandColor: "bg-slate-600",
           text: "Platform",
+          icon: Link2,
         };
     }
   };
@@ -151,7 +156,10 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-xs font-bold text-slate-800">{config.text}</p>
+                      <span className="flex items-center gap-1.5 text-slate-800">
+                        {config.icon && <config.icon className={`w-3.5 h-3.5 shrink-0 ${config.accent}`} />}
+                        <p className="text-xs font-bold">{config.text}</p>
+                      </span>
                       {acc.connected ? (
                         <span className="text-[9px] font-sans px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/50">
                           Active
@@ -273,8 +281,8 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
             rel="noopener noreferrer"
             className="flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-blue-500 hover:bg-blue-50/20 rounded-lg text-slate-850 font-medium transition-all group"
           >
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+            <span className="flex items-center gap-2">
+              <Facebook className="w-4 h-4 text-blue-600 shrink-0" />
               Meta (FB & IG)
             </span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600" />
@@ -286,8 +294,8 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
             rel="noopener noreferrer"
             className="flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-red-500 hover:bg-red-50/20 rounded-lg text-slate-850 font-medium transition-all group"
           >
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+            <span className="flex items-center gap-2">
+              <Youtube className="w-4 h-4 text-red-600 shrink-0" />
               Google Cloud / YouTube
             </span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-red-600" />
@@ -299,8 +307,8 @@ export const ConnectedAccounts: React.FC<ConnectedAccountsProps> = ({
             rel="noopener noreferrer"
             className="flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-slate-800 hover:bg-slate-50 rounded-lg text-slate-850 font-medium transition-all group"
           >
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-900" />
+            <span className="flex items-center gap-2">
+              <Music className="w-4 h-4 text-slate-900 shrink-0" />
               TikTok Developers
             </span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-800" />

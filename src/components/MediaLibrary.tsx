@@ -13,7 +13,8 @@ import {
   FileVideo,
   FileImage,
   RefreshCw,
-  Eye
+  Eye,
+  AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { ConnectedAccount, MediaLibraryItem } from "../types";
@@ -97,17 +98,72 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     ];
     const chosenCover = isImage ? objectUrl : randomThumbs[Math.floor(Math.random() * randomThumbs.length)];
 
-    const newItem: MediaLibraryItem = {
-      id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      name: file.name,
-      size: sizeStr,
-      src: objectUrl,
-      thumbnail: chosenCover,
-      type: isImage ? 'image' : 'video',
-      duration: isVideo ? 30 + Math.floor(Math.random() * 45) : undefined
-    };
+    if (isVideo && objectUrl) {
+      const tempVideo = document.createElement("video");
+      tempVideo.preload = "metadata";
+      tempVideo.src = objectUrl;
 
-    onAddLibraryItem(newItem);
+      tempVideo.onloadedmetadata = () => {
+        const width = tempVideo.videoWidth;
+        const height = tempVideo.videoHeight;
+        const duration = tempVideo.duration ? Math.round(tempVideo.duration) : (30 + Math.floor(Math.random() * 45));
+
+        const ratio = width / height;
+        const isStrictly916 = Math.abs(ratio - (9 / 16)) < 0.05;
+
+        let aspectRatioStr = `${width}:${height}`;
+        if (Math.abs(ratio - (9 / 16)) < 0.05) aspectRatioStr = "9:16";
+        else if (Math.abs(ratio - (16 / 9)) < 0.05) aspectRatioStr = "16:9";
+        else if (Math.abs(ratio - 1) < 0.05) aspectRatioStr = "1:1";
+        else if (Math.abs(ratio - (4 / 3)) < 0.05) aspectRatioStr = "4:3";
+
+        let warning = "";
+        if (!isStrictly916) {
+          warning = `This video has an aspect ratio of ${aspectRatioStr}. TikTok, Instagram Reels, and YouTube Shorts require vertical 9:16 video formats to avoid cropping or letterboxing.`;
+        } else if (width < 720 || height < 1280) {
+          warning = `Low-resolution vertical video (${width}x${height}). Platforms require at least 720x1280 (1080x1920 recommended) for high-definition vertical display.`;
+        }
+
+        const newItem: MediaLibraryItem = {
+          id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: file.name,
+          size: sizeStr,
+          src: objectUrl,
+          thumbnail: chosenCover,
+          type: 'video',
+          duration: duration,
+          width,
+          height,
+          aspectRatio: aspectRatioStr,
+          isVertical: isStrictly916,
+          warning: warning || undefined
+        };
+        onAddLibraryItem(newItem);
+      };
+
+      tempVideo.onerror = () => {
+        const newItem: MediaLibraryItem = {
+          id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          name: file.name,
+          size: sizeStr,
+          src: objectUrl,
+          thumbnail: chosenCover,
+          type: 'video',
+          duration: 30 + Math.floor(Math.random() * 45)
+        };
+        onAddLibraryItem(newItem);
+      };
+    } else {
+      const newItem: MediaLibraryItem = {
+        id: `lib-user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        name: file.name,
+        size: sizeStr,
+        src: objectUrl,
+        thumbnail: chosenCover,
+        type: 'image'
+      };
+      onAddLibraryItem(newItem);
+    }
   };
 
   // Drag-and-drop orchestration internally within platform bays
@@ -278,11 +334,11 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-bold text-slate-800 truncate" title={item.name}>
                         {item.name}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-slate-500 font-mono">
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-slate-500 font-mono flex-wrap">
                         <span className="uppercase">{item.size}</span>
                         {item.duration && (
                           <>
@@ -290,8 +346,28 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                             <span>{item.duration}s</span>
                           </>
                         )}
+                        {item.aspectRatio && (
+                          <>
+                            <span>•</span>
+                            <span className={`px-1 rounded-xs ${item.isVertical ? "bg-emerald-50 text-emerald-700 font-bold" : "bg-amber-50 text-amber-700 font-bold"}`}>
+                              {item.aspectRatio}
+                            </span>
+                          </>
+                        )}
+                        {item.warning && (
+                          <div className="relative group/warn inline-flex items-center ml-0.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-1.5 bg-slate-900 text-white text-[10px] rounded-lg p-2.5 shadow-xl hidden group-hover/warn:block z-50 w-64 leading-normal font-sans font-medium normal-case">
+                              <span className="font-extrabold text-amber-400 block mb-1">⚠️ Format Verification Alert</span>
+                              {item.warning}
+                              <div className="mt-2 pt-1.5 border-t border-slate-700 text-[9px] text-slate-300">
+                                <span className="font-bold text-indigo-400">Safe Zones:</span> Ensure text/graphics are inside the center 70% to avoid overlay clashes.
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {Object.values(attachments).some((att: any) => att?.id === item.id) && (
-                          <span className="text-emerald-600 font-sans font-bold flex items-center gap-0.5">
+                          <span className="text-emerald-600 font-sans font-bold flex items-center gap-0.5 ml-1">
                             <Check className="w-2.5 h-2.5" /> ROUTED
                           </span>
                         )}
@@ -418,30 +494,48 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                       Channel Off
                     </div>
                   ) : hasVideo ? (
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-150 p-1.5 rounded-lg relative group">
-                      <div className="w-6 h-8 bg-slate-200 rounded overflow-hidden shrink-0 relative border border-slate-300 flex items-center justify-center">
-                        {hasVideo.thumbnail ? (
-                          <img src={hasVideo.thumbnail} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] font-black uppercase text-slate-400">
-                            MIN
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 bg-slate-50 border border-slate-150 p-1.5 rounded-lg relative group">
+                        <div className="w-6 h-8 bg-slate-200 rounded overflow-hidden shrink-0 relative border border-slate-300 flex items-center justify-center">
+                          {hasVideo.thumbnail ? (
+                            <img src={hasVideo.thumbnail} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-[8px] font-black uppercase text-slate-400">
+                              MIN
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] font-bold text-slate-700 truncate" title={hasVideo.name}>
+                            {hasVideo.name}
+                          </p>
+                          <div className="flex items-center gap-1 mt-0.2 flex-wrap">
+                            <p className="text-[8px] text-slate-400 font-mono">{hasVideo.size}</p>
+                            {hasVideo.aspectRatio && (
+                              <span className={`text-[8px] px-1 py-0.2 rounded-xs font-bold ${hasVideo.isVertical ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                {hasVideo.aspectRatio}
+                              </span>
+                            )}
                           </div>
-                        )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClearPlatformAttachment(acc.platform)}
+                          className="absolute -top-1 -right-1 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 rounded-full p-0.5 text-slate-400 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100 shadow-xs cursor-pointer"
+                          title="Remove custom video mapping"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-bold text-slate-700 truncate" title={hasVideo.name}>
-                          {hasVideo.name}
-                        </p>
-                        <p className="text-[8px] text-slate-400 font-mono mt-0.2">{hasVideo.size}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleClearPlatformAttachment(acc.platform)}
-                        className="absolute -top-1 -right-1 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-200 rounded-full p-0.5 text-slate-400 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100 shadow-xs cursor-pointer"
-                        title="Remove custom video mapping"
-                      >
-                        <Trash2 className="w-2.5 h-2.5" />
-                      </button>
+                      {hasVideo.warning && (
+                        <div className="bg-amber-50/70 border border-amber-200/50 rounded-lg p-1.5 text-[8px] text-amber-900 leading-normal flex items-start gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-extrabold text-amber-950 uppercase tracking-wide text-[7px]">Safe-Zone Alert</p>
+                            <p className="mt-0.5 text-amber-800">{hasVideo.warning}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="border border-dashed border-slate-200 hover:border-slate-300 rounded-lg py-2 text-center text-[8.5px] text-slate-400 font-medium">
